@@ -58,3 +58,5 @@ coverage.info
 .pixi/*
 pixi.lock
 !.pixi/config.toml
+can_env/*
+.gitignore
