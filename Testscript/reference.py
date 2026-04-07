@@ -19,15 +19,7 @@ f.oxidizer_inlet.T = 300
 #f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
 f.solve(loglevel=1)
-f.save("Testscript/Data/TestNewBuild.h5", name="NewBuild", overwrite=True)
+f.save("Testscript/Data/TestNewBuild.h5", name="Reference", overwrite=True)
 
-fig, ax = plt.subplots()
-ax.plot(f.grid, f.T, label="NewBuild")
-ax.scatter(f.grid[107], f.T[107], color="r")
-f.restore("Testscript/Data/TestNewBuild.h5", name="Reference")
-ax.plot(f.grid, f.T, label="Reference")
-ax.grid()
-ax.legend()
-ax.set_ylabel("T")
-ax.set_xlabel("x")
+plt.plot(f.grid, f.T)
 plt.show()
