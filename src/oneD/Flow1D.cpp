@@ -648,6 +648,7 @@ void Flow1D::evalLambda(span<const double> x, span<double> rsd, span<int> diag,
 void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
                         double rdt, size_t jmin, size_t jmax)
 {
+    writelog("Flow1D::evalEnergy sagt hallo.");
     if (jmin == 0) { // left boundary
         rsd[index(c_offset_T, jmin)] = T(x, jmin);
     }
