@@ -60,3 +60,4 @@ pixi.lock
 !.pixi/config.toml
 can_env/*
 .gitignore
+Testscript/Data/TestNewBuild.h5
