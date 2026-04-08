@@ -648,7 +648,6 @@ void Flow1D::evalLambda(span<const double> x, span<double> rsd, span<int> diag,
 void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
                         double rdt, size_t jmin, size_t jmax)
 {
-    writelog("Flow1D::evalEnergy sagt hallo.");
     if (jmin == 0) { // left boundary
         rsd[index(c_offset_T, jmin)] = T(x, jmin);
     }
@@ -673,7 +672,10 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
             rsd[index(c_offset_T, j)] = - m_cp[j]*rho_u(x, j)*dTdz(x, j)
                                         - conduction(x, j) - sum;
             rsd[index(c_offset_T, j)] /= (m_rho[j]*m_cp[j]);
-            rsd[index(c_offset_T, j)] -= (m_qdotRadiation[j] / (m_rho[j] * m_cp[j]));
+	    if (j <=100 ){
+            rsd[index(c_offset_T, j)] -=  10000000 * (T(x, j) - 300);//(m_qdotRadiation[j] / (m_rho[j] * m_cp[j]));
+	
+	    }
             if (!m_twoPointControl || (m_z[j] != m_tLeft && m_z[j] != m_tRight)) {
                 rsd[index(c_offset_T, j)] -= rdt*(T(x, j) - T_prev(j));
                 diag[index(c_offset_T, j)] = 1;
