@@ -19,7 +19,7 @@ f.oxidizer_inlet.T = 300
 
 #f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
-f.solve(loglevel=1, wall_pos=120, factor=199)
+f.solve(loglevel=1, wall_pos=100, factor=1000000)
 
 f.save("Testscript/Data/TestNewBuild.h5", name="NewBuild", overwrite=True)
 f2.restore("Testscript/Data/TestNewBuild.h5", name="Reference")
