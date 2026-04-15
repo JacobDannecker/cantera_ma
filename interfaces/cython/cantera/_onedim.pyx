@@ -1156,7 +1156,7 @@ cdef class Sim1D:
         """
         return False
 
-    def solve(self, loglevel=1, refine_grid=True, auto=False):
+    def solve(self, loglevel=1, refine_grid=True, auto=False, wall_pos=12, factor=22):
         """
         Solve the problem.
 
@@ -1174,11 +1174,10 @@ cdef class Sim1D:
             transport is enabled, an additional solution using these options
             will be calculated.
         """
-
         if not auto:
             if not self._initialized:
                 self.set_initial_guess()
-            self.sim.solve(loglevel, <cbool>refine_grid)
+            self.sim.solve(loglevel, <cbool>refine_grid, wall_pos, factor)
             return
 
         def set_transport(multi):
@@ -1252,7 +1251,7 @@ cdef class Sim1D:
             log('Solving on {} point grid with energy equation enabled', N)
             self.energy_enabled = True
             try:
-                self.sim.solve(loglevel, <cbool>False)
+                self.sim.solve(loglevel, <cbool>False, wall_pos, factor)
                 solved = True
             except CanteraError as e:
                 log(str(e))
@@ -1274,7 +1273,7 @@ cdef class Sim1D:
                 log('Initial solve failed; Retrying with energy equation disabled')
                 self.energy_enabled = False
                 try:
-                    self.sim.solve(loglevel, <cbool>False)
+                    self.sim.solve(loglevel, <cbool>False, wall_pos, factor)
                     solved = True
                 except CanteraError as e:
                     log(str(e))
@@ -1290,7 +1289,7 @@ cdef class Sim1D:
                     log('Solving on {} point grid with energy equation re-enabled', N)
                     self.energy_enabled = True
                     try:
-                        self.sim.solve(loglevel, <cbool>False)
+                        self.sim.solve(loglevel, <cbool>False, wall_pos, factor)
                         solved = True
                     except CanteraError as e:
                         log(str(e))
@@ -1306,7 +1305,7 @@ cdef class Sim1D:
                 # Found a non-extinct solution on the fixed grid
                 log('Solving with grid refinement enabled')
                 try:
-                    self.sim.solve(loglevel, <cbool>True)
+                    self.sim.solve(loglevel, <cbool>True, wall_pos, factor)
                     solved = True
                 except CanteraError as e:
                     log(str(e))
@@ -1345,7 +1344,7 @@ cdef class Sim1D:
 
         # Final call with expensive options enabled
         if have_user_tolerances or solve_multi or soret_doms:
-            self.sim.solve(loglevel, <cbool>refine_grid)
+            self.sim.solve(loglevel, <cbool>refine_grid, wall_pos, factor)
 
     def refine(self, loglevel=1):
         """
