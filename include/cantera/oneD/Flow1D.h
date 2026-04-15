@@ -1032,6 +1032,12 @@ public:
     //! Temperature at the point used to fix the flame location
     double m_tfixed = -1.0;
 
+    //! Wall position used in energy equation
+    int m_wall_pos = 99;
+
+    //! Factor used in energy equation
+    int m_factor = 199;
+
 private:
     //! Holds the average of the species mass fractions between grid points j and j+1.
     //! Used when building a gas state at the grid midpoints for evaluating transport
