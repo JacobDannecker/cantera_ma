@@ -311,6 +311,8 @@ class Sim1D:
         loglevel: LogLevel = 1,
         refine_grid: bool = True,
         auto: bool = False,
+        wall_pos: int = 12,
+        factor: int = 22,
     ) -> None: ...
     def refine(self, loglevel: LogLevel = 1) -> None: ...
     def set_refine_criteria(

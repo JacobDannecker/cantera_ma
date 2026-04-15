@@ -1037,7 +1037,7 @@ class CounterflowDiffusionFlame(FlameBase):
     def extinct(self):
         return max(self.T) - max(self.fuel_inlet.T, self.oxidizer_inlet.T) < 10
 
-    def solve(self, loglevel=1, refine_grid=True, auto=False):
+    def solve(self, loglevel=1, refine_grid=True, auto=False, wall_pos=12, factor=22):
         """
         Solve the problem.
 
@@ -1060,7 +1060,7 @@ class CounterflowDiffusionFlame(FlameBase):
                 "The 'ionized-gas' transport model is untested for "
                 "'CounterflowDiffusionFlame' objects.", UserWarning)
 
-        super().solve(loglevel, refine_grid, auto)
+        super().solve(loglevel, refine_grid, auto, wall_pos, factor)
         # Do some checks if loglevel is set
         if loglevel > 0:
             if self.extinct():
