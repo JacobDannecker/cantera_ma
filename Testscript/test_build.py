@@ -19,14 +19,17 @@ f.oxidizer_inlet.T = 300
 
 #f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
-f.solve(loglevel=1, wall_pos=100, factor=1000000)
+wall_pos = 80 
+factor = 1000000
+
+f.solve(loglevel=1, wall_pos=wall_pos, factor=factor)
 
 f.save("Testscript/Data/TestNewBuild.h5", name="NewBuild", overwrite=True)
 f2.restore("Testscript/Data/TestNewBuild.h5", name="Reference")
 
 
 # Info
-print(f"T at wall: {f.T[80]}")
+print(f"T at wall: {f.T[wall_pos]}")
 print(f"mdot fuel new build: {f.fuel_inlet.mdot}")
 print(f"mdot ox new build: {f.oxidizer_inlet.mdot}")
 print(f"mdot fuel reference: {f2.fuel_inlet.mdot}")
@@ -43,7 +46,7 @@ strain_ref_max = f2.strain_rate("max")
 # Fig 1 temp subplot 1
 fig, ax = plt.subplots(2, 1)
 ax[0].plot(f.grid, f.T, label=f"NewBuild strain_max: {strain_new_max:.2f}")
-ax[0].vlines(f.grid[80], 0, 3000, color="b", linestyle="-.")
+ax[0].vlines(f.grid[wall_pos], 0, 3000, color="b", linestyle="-.")
 ax[0].plot(f2.grid, f2.T, label=f"Reference strain_max: {strain_ref_max:.2f}", linestyle="--")
 ax[0].grid()
 ax[0].legend()
