@@ -664,7 +664,6 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
             setGas(x, j);
             // Note: call setFuelOxComposition(fuel, ox) once at setup time
             double Z = m_thermo->mixtureFraction("H2:1", "O2:1", ThermoBasis::mass, "Bilger");
-            (void) Z;
             grad_hk(x, j);
             double sum = 0.0;
             for (size_t k = 0; k < m_nsp; k++) {
