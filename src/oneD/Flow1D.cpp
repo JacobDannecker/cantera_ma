@@ -661,6 +661,10 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
     size_t j1 = std::min(jmax, m_points-2);
     for (size_t j = j0; j <= j1; j++) {
         if (m_do_energy[j]) {
+            setGas(x, j);
+            // Note: call setFuelOxComposition(fuel, ox) once at setup time
+            double Z = m_thermo->mixtureFraction("H2:1", "O2:1", ThermoBasis::mass, "Bilger");
+            (void) Z;
             grad_hk(x, j);
             double sum = 0.0;
             for (size_t k = 0; k < m_nsp; k++) {
@@ -675,6 +679,9 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
 	    rsd[index(c_offset_T, j)] -= (m_qdotRadiation[j] / (m_rho[j] * m_cp[j]));
             if (j <= (size_t)m_wall_pos) {
                 rsd[index(c_offset_T, j)] -= m_factor * (T(x, j) - 300);
+		if (j == (size_t)m_wall_pos){
+			writelog("Z: {}\n", Z);	
+		}
             }
             if (!m_twoPointControl || (m_z[j] != m_tLeft && m_z[j] != m_tRight)) {
                 rsd[index(c_offset_T, j)] -= rdt*(T(x, j) - T_prev(j));
