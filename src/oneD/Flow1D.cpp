@@ -672,6 +672,7 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
             rsd[index(c_offset_T, j)] = - m_cp[j]*rho_u(x, j)*dTdz(x, j)
                                         - conduction(x, j) - sum;
             rsd[index(c_offset_T, j)] /= (m_rho[j]*m_cp[j]);
+	    rsd[index(c_offset_T, j)] -= (m_qdotRadiation[j] / (m_rho[j] * m_cp[j]));
             if (j <= (size_t)m_wall_pos) {
                 rsd[index(c_offset_T, j)] -= m_factor * (T(x, j) - 300);
             }
