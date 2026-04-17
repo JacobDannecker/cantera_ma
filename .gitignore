@@ -62,4 +62,3 @@ can_env/*
 .gitignore
 Testscript/Data/TestNewBuild.h5
 Ideen.hmm
-Testscript/Data/wall-no_wall.h5
