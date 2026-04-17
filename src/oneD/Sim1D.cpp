@@ -339,7 +339,7 @@ void Sim1D::finalize()
     }
 }
 
-void Sim1D::solve(int loglevel, bool refine_grid, int wall_pos, int factor)
+void Sim1D::solve(int loglevel, bool refine_grid, double wall_pos, int factor)
 {
     int new_points = 1;
     m_attempt_counter = 0;
