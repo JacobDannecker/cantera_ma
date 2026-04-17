@@ -20,8 +20,8 @@ f.oxidizer_inlet.T = 300
 
 #f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
-wall_pos = 90 
-factor = 1000000000
+wall_pos = 0.1 
+factor = 100000
 f.transport_model = "unity-Lewis-number"
 
 f.solve(loglevel=1, wall_pos=wall_pos, factor=factor)
@@ -40,7 +40,7 @@ chi_st_new = chi_stoich(f)
 chi_st_ref = chi_stoich(f2) 
 
 # Info
-print(f"T at wall: {f.T[wall_pos]}")
+#print(f"T at wall: {f.T[wall_pos]}")
 print(f"mdot fuel new build: {f.fuel_inlet.mdot}")
 print(f"mdot ox new build: {f.oxidizer_inlet.mdot}")
 print("-----------------------------------------------")
@@ -58,7 +58,7 @@ fig, ax = plt.subplots(3, 1)
 fig.suptitle(" H2/O2") 
 
 ax[0].plot(f.grid, f.T, label=f"With Wall chi_st: {chi_st_new:.2f}")
-ax[0].vlines(f.grid[wall_pos], 0, 3000, color="b", linestyle="-.")
+#ax[0].vlines(f.grid[wall_pos], 0, 3000, color="b", linestyle="-.")
 ax[0].plot(f2.grid, f2.T, label=f"No Wall chi_st: {chi_st_ref:.2f}", linestyle="--")
 ax[0].grid()
 ax[0].legend()
