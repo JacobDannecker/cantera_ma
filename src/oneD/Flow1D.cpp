@@ -664,17 +664,6 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
             setGas(x, j);
             // Note: call setFuelOxComposition(fuel, ox) once at setup time
             double Z = m_thermo->mixtureFraction("H2:1", "O2:1", ThermoBasis::mass, "Bilger");
-
-	    /*int gridpoint_wall = 0;
-	    if ((m_wall_pos - Z) < 0.1){
-
-		gridpoint_wall = j;
-		writelog("Wall gridpoint: {}", gridpoint_wall);
-	    }
-	    else{	
-		gridpoint_wall = -1;
-	    }*/
-
             grad_hk(x, j);
             double sum = 0.0;
             for (size_t k = 0; k < m_nsp; k++) {
@@ -688,14 +677,8 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
             rsd[index(c_offset_T, j)] /= (m_rho[j]*m_cp[j]);
 	    rsd[index(c_offset_T, j)] -= (m_qdotRadiation[j] / (m_rho[j] * m_cp[j]));
 
-            /*if (j <= size_t(gridpoint_wall)) {
-                rsd[index(c_offset_T, j)] -= m_factor * (T(x, j) - 300);
-            }*/
 
             if (Z >= m_wall_pos) {
-		writelog("Z: {}\n", Z);
-		writelog("wall_pos: {}\n", m_wall_pos);
-		writelog("Gridpoint: {}\n", j);
                 rsd[index(c_offset_T, j)] -= m_factor * (T(x, j) - 300);
             }
 
