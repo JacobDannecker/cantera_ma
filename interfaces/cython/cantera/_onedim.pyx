@@ -7,7 +7,7 @@ from shutil import get_terminal_size as _get_terminal_size
 import numpy as np
 cimport numpy as np
 
-from ._utils cimport stringify, pystr, anymap_to_py
+from ._utils cimport stringify, pystr, anymap_to_py, py_to_anymap
 from ._utils import CanteraError
 from cython.operator import dereference as deref
 
@@ -846,6 +846,22 @@ cdef class FlowBase(Domain1D):
         """
         self.flow.setAxisymmetricFlow()
 
+    def set_parameters(self, params):
+        """
+        Set flow parameters from a dictionary.
+
+        :param params:
+            Dictionary containing flow parameters. Valid keys are:
+            - ``Z_wall``: Wall position (double)
+            - ``T_wall``: Wall temperature (double)
+            - ``factor``: Factor used in energy equation (double)
+            - ``mix_frac``: Mixture fraction species name (str)
+
+        >>> flow.set_parameters({"Z_wall": 0.9, "T_wall": 500.0, "factor": 1e9, "mix_frac": "H"})
+        """
+        cdef CxxAnyMap cxx_params = py_to_anymap(params)
+        self.flow.setParameters(cxx_params)
+
     @property
     def type(self):
         """
@@ -1156,7 +1172,7 @@ cdef class Sim1D:
         """
         return False
 
-    def solve(self, loglevel=1, refine_grid=True, auto=False, wall_pos=0.1, factor=1000):
+    def solve(self, loglevel=1, refine_grid=True, auto=False):
         """
         Solve the problem.
 
@@ -1177,7 +1193,7 @@ cdef class Sim1D:
         if not auto:
             if not self._initialized:
                 self.set_initial_guess()
-            self.sim.solve(loglevel, <cbool>refine_grid, wall_pos, factor)
+            self.sim.solve(loglevel, <cbool>refine_grid)
             return
 
         def set_transport(multi):
@@ -1251,7 +1267,7 @@ cdef class Sim1D:
             log('Solving on {} point grid with energy equation enabled', N)
             self.energy_enabled = True
             try:
-                self.sim.solve(loglevel, <cbool>False, wall_pos, factor)
+                self.sim.solve(loglevel, <cbool>False)
                 solved = True
             except CanteraError as e:
                 log(str(e))
@@ -1273,7 +1289,7 @@ cdef class Sim1D:
                 log('Initial solve failed; Retrying with energy equation disabled')
                 self.energy_enabled = False
                 try:
-                    self.sim.solve(loglevel, <cbool>False, wall_pos, factor)
+                    self.sim.solve(loglevel, <cbool>False)
                     solved = True
                 except CanteraError as e:
                     log(str(e))
@@ -1289,7 +1305,7 @@ cdef class Sim1D:
                     log('Solving on {} point grid with energy equation re-enabled', N)
                     self.energy_enabled = True
                     try:
-                        self.sim.solve(loglevel, <cbool>False, wall_pos, factor)
+                        self.sim.solve(loglevel, <cbool>False)
                         solved = True
                     except CanteraError as e:
                         log(str(e))
@@ -1305,7 +1321,7 @@ cdef class Sim1D:
                 # Found a non-extinct solution on the fixed grid
                 log('Solving with grid refinement enabled')
                 try:
-                    self.sim.solve(loglevel, <cbool>True, wall_pos, factor)
+                    self.sim.solve(loglevel, <cbool>True)
                     solved = True
                 except CanteraError as e:
                     log(str(e))
@@ -1344,7 +1360,7 @@ cdef class Sim1D:
 
         # Final call with expensive options enabled
         if have_user_tolerances or solve_multi or soret_doms:
-            self.sim.solve(loglevel, <cbool>refine_grid, wall_pos, factor)
+            self.sim.solve(loglevel, <cbool>refine_grid)
 
     def refine(self, loglevel=1):
         """
