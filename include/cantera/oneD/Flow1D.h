@@ -1049,10 +1049,13 @@ public:
     string m_mix_frac = "H";
 
     //! Fuel species name
-    string m_fuel = "";
+    string m_fuel = "H";
 
     //! Oxidizer species name
-    string m_oxidizer = "";
+    string m_oxidizer = "O2";
+
+    //! Basis for mixture fraction calculation (mass or mole)
+    ThermoBasis m_mix_basis = ThermoBasis::mass;
 
     void setNonAdiabaticWall(const AnyMap& params);
 
