@@ -1048,7 +1048,13 @@ public:
     //! Mixture fraction species name
     string m_mix_frac = "H";
 
-    void setParameters(const AnyMap& params);
+    //! Fuel species name
+    string m_fuel = "";
+
+    //! Oxidizer species name
+    string m_oxidizer = "";
+
+    void setNonAdiabaticWall(const AnyMap& params);
 
 private:
     //! Holds the average of the species mass fractions between grid points j and j+1.

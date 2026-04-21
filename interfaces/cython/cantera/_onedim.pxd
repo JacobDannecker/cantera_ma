@@ -109,7 +109,7 @@ cdef extern from "cantera/oneD/Flow1D.h":
         double rightControlPointTemperature() except +translate_exception
         double rightControlPointCoordinate() except +translate_exception
         void setRightControlPointTemperature(double) except +translate_exception
-        void setParameters(CxxAnyMap&) except +translate_exception
+        void setNonAdiabaticWall(CxxAnyMap&) except +translate_exception
 
 
 cdef extern from "cantera/oneD/Sim1D.h":

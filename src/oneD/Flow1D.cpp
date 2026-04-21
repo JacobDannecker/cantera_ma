@@ -649,7 +649,6 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
                         double rdt, size_t jmin, size_t jmax)
 {
 
-    writelog("zwall: {}, Twall: {}, factor: {}, mix_frac: {} \n", m_Z_wall, m_T_wall, m_factor, m_mix_frac);
     if (jmin == 0) { // left boundary
         rsd[index(c_offset_T, jmin)] = T(x, jmin);
     }
@@ -665,7 +664,7 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
         if (m_do_energy[j]) {
             setGas(x, j);
             // Note: call setFuelOxComposition(fuel, ox) once at setup time
-            double Z = m_thermo->mixtureFraction("H2:1", "O2:1", ThermoBasis::mass, m_mix_frac);
+            double Z = m_thermo->mixtureFraction(m_fuel, m_oxidizer, ThermoBasis::mass, m_mix_frac);
             grad_hk(x, j);
             double sum = 0.0;
             for (size_t k = 0; k < m_nsp; k++) {
@@ -1431,7 +1430,7 @@ void Flow1D::enableTwoPointControl(bool twoPointControl)
     }
 }
 
-void Flow1D::setParameters(const AnyMap& params)
+void Flow1D::setNonAdiabaticWall(const AnyMap& params)
 {
     if (params.hasKey("Z_wall")) {
         m_Z_wall = params.at("Z_wall").asDouble();
@@ -1445,6 +1444,13 @@ void Flow1D::setParameters(const AnyMap& params)
     if (params.hasKey("mix_frac")) {
         m_mix_frac = params.at("mix_frac").asString();
     }
+    if (params.hasKey("fuel")) {
+        m_fuel = params.at("fuel").asString();
+    }
+    if (params.hasKey("oxidizer")) {
+        m_oxidizer = params.at("oxidizer").asString();
+    }
+
 }
 
 } // namespace

@@ -846,21 +846,23 @@ cdef class FlowBase(Domain1D):
         """
         self.flow.setAxisymmetricFlow()
 
-    def set_parameters(self, params):
+    def set_non_adiabatic_wall(self, params):
         """
-        Set flow parameters from a dictionary.
+        Set non-adiabatic wall parameters from a dictionary.
 
         :param params:
-            Dictionary containing flow parameters. Valid keys are:
+            Dictionary containing wall parameters. Valid keys are:
             - ``Z_wall``: Wall position (double)
             - ``T_wall``: Wall temperature (double)
             - ``factor``: Factor used in energy equation (double)
             - ``mix_frac``: Mixture fraction species name (str)
+            - ``fuel``: Fuel species name (str)
+            - ``oxidizer``: Oxidizer species name (str)
 
-        >>> flow.set_parameters({"Z_wall": 0.9, "T_wall": 500.0, "factor": 1e9, "mix_frac": "H"})
+        >>> flow.set_non_adiabatic_wall({"Z_wall": 0.9, "T_wall": 500.0, "factor": 1e9, "mix_frac": "H", "fuel": "H2", "oxidizer": "O2"})
         """
         cdef CxxAnyMap cxx_params = py_to_anymap(params)
-        self.flow.setParameters(cxx_params)
+        self.flow.setNonAdiabaticWall(cxx_params)
 
     @property
     def type(self):
