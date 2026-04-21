@@ -664,7 +664,7 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
         if (m_do_energy[j]) {
             setGas(x, j);
             // Note: call setFuelOxComposition(fuel, ox) once at setup time
-            double Z = m_thermo->mixtureFraction(m_fuel, m_oxidizer, ThermoBasis::mass, m_mix_frac);
+            double Z = m_thermo->mixtureFraction(m_fuel, m_oxidizer, m_mix_basis, m_mix_frac);
             grad_hk(x, j);
             double sum = 0.0;
             for (size_t k = 0; k < m_nsp; k++) {
@@ -1449,6 +1449,14 @@ void Flow1D::setNonAdiabaticWall(const AnyMap& params)
     }
     if (params.hasKey("oxidizer")) {
         m_oxidizer = params.at("oxidizer").asString();
+    }
+    if (params.hasKey("basis")) {
+        string basis_str = params.at("basis").asString();
+        if (basis_str == "mass") {
+            m_mix_basis = ThermoBasis::mass;
+        } else if (basis_str == "molar") {
+            m_mix_basis = ThermoBasis::molar;
+        }
     }
 
 }

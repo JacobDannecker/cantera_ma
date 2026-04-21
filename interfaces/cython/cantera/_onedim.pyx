@@ -858,8 +858,9 @@ cdef class FlowBase(Domain1D):
             - ``mix_frac``: Mixture fraction species name (str)
             - ``fuel``: Fuel species name (str)
             - ``oxidizer``: Oxidizer species name (str)
+            - ``basis``: Mixture fraction basis, either "mass" or "molar" (str)
 
-        >>> flow.set_non_adiabatic_wall({"Z_wall": 0.9, "T_wall": 500.0, "factor": 1e9, "mix_frac": "H", "fuel": "H2", "oxidizer": "O2"})
+        >>> flow.set_non_adiabatic_wall({"Z_wall": 0.9, "T_wall": 500.0, "factor": 1e9, "mix_frac": "H", "fuel": "H2", "oxidizer": "O2", "basis": "mass"})
         """
         cdef CxxAnyMap cxx_params = py_to_anymap(params)
         self.flow.setNonAdiabaticWall(cxx_params)
