@@ -8,8 +8,8 @@ gas = ct.Solution(reaction_mechanism)
 width = 18e-3  
 
 grid = np.linspace(0., width, 250)
-f = ct.CounterflowDiffusionFlame(gas, grid=grid)
-f2 = ct.CounterflowDiffusionFlame(gas, grid=grid)
+f = ct.CounterflowDiffusionFlame(gas, width=width)
+f2 = ct.CounterflowDiffusionFlame(gas, width=width)
 f.P = 1.e5  
 f.fuel_inlet.mdot = 0.5  
 f.fuel_inlet.X = 'H2:1'
@@ -20,7 +20,7 @@ f.oxidizer_inlet.T = 300
 
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
-wall_pos = 0.8
+wall_pos = 0.9
 factor = 1000000000
 f.transport_model = "unity-Lewis-number"
 f.set_initial_guess(data="Testscript/Data/wall-no_wall.h5", group="no_wall") 
