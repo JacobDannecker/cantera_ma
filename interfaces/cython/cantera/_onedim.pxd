@@ -10,6 +10,7 @@ from .kinetics cimport *
 from .func1 cimport *
 from .thermo cimport *
 from .jacobians cimport *
+from ._utils cimport CxxAnyMap
 
 
 cdef extern from "cantera/oneD/DomainFactory.h" namespace "Cantera":
@@ -108,6 +109,7 @@ cdef extern from "cantera/oneD/Flow1D.h":
         double rightControlPointTemperature() except +translate_exception
         double rightControlPointCoordinate() except +translate_exception
         void setRightControlPointTemperature(double) except +translate_exception
+        void setParameters(CxxAnyMap&) except +translate_exception
 
 
 cdef extern from "cantera/oneD/Sim1D.h":
@@ -126,7 +128,7 @@ cdef extern from "cantera/oneD/Sim1D.h":
         void setLinearSolver(shared_ptr[CxxSystemJacobian]) except +translate_exception
         shared_ptr[CxxSystemJacobian] linearSolver()
         void getInitialSoln() except +translate_exception
-        void solve(int, cbool, double, int) except +translate_exception
+        void solve(int, cbool) except +translate_exception
         void refine(int) except +translate_exception
         void setRefineCriteria(size_t, double, double, double, double) except +translate_exception
         vector[double] getRefineCriteria(int) except +translate_exception
