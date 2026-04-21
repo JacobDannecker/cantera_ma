@@ -338,9 +338,7 @@ class FreeFlame(FlameBase):
         loglevel: LogLevel = 1,
         refine_grid: bool = True,
         auto: bool = False,
-        wall_pos = 12,
-        factor = 22,
-    ) -> None: ...
+   ) -> None: ...
     def get_flame_speed_reaction_sensitivities(self) -> Array: ...
 
 class BurnerFlame(FlameBase):
@@ -360,6 +358,8 @@ class BurnerFlame(FlameBase):
         loglevel: LogLevel = 1,
         refine_grid: bool = True,
         auto: bool = False,
+        wall_pos = 0.1,
+        factor = 1000,
     ) -> None: ...
 
 class CounterflowDiffusionFlame(FlameBase):
