@@ -26,9 +26,11 @@ params = {
     'Z_wall': 0.9,
     'T_wall': 300.0,
     'factor': 100000000,
-    'mix_frac': 'Bilger'
+    'mix_frac': 'Bilger',
+    'fuel': 'H2',
+    'oxidizer': 'O2'
 }
-f.flame.set_parameters(params)
+f.flame.set_non_adiabatic_wall(params)
 f.transport_model = "unity-Lewis-number"
 f.solve(loglevel=1)
 print(f.transport_model)
