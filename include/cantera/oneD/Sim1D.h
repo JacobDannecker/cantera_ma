@@ -205,7 +205,7 @@ public:
      * @param loglevel  Controls the amount of diagnostic output.
      * @param refine_grid  If `true`, the grid will be refined
      */
-    void solve(int loglevel = 0, bool refine_grid = true, double wall_pos=0.1, int factor=1000);
+    void solve(int loglevel = 0, bool refine_grid = true);
 
     void eval(double rdt=-1.0, int count = 1) {
         OneDim::eval(npos, *m_state, m_xnew, rdt, count);
