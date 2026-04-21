@@ -339,7 +339,7 @@ void Sim1D::finalize()
     }
 }
 
-void Sim1D::solve(int loglevel, bool refine_grid, double wall_pos, int factor)
+void Sim1D::solve(int loglevel, bool refine_grid)
 {
     int new_points = 1;
     m_attempt_counter = 0;
@@ -348,13 +348,6 @@ void Sim1D::solve(int loglevel, bool refine_grid, double wall_pos, int factor)
         clearDebugFile();
     }
 
-    for (auto& dom : m_dom) {
-        Flow1D* flow = dynamic_cast<Flow1D*>(dom.get());
-        if (flow) {
-            flow->m_wall_pos = wall_pos;
-            flow->m_factor = factor;
-        }
-    }
 
     while (new_points > 0) {
         SteadyStateSystem::solve(loglevel);
