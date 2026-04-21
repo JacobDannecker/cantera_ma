@@ -679,7 +679,7 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
 	    rsd[index(c_offset_T, j)] -= (m_qdotRadiation[j] / (m_rho[j] * m_cp[j]));
 
 
-            if (Z >= m_Z_wall) {
+            if (Z >= m_Z_wall && m_do_non_adiabatic_wall) {
                 rsd[index(c_offset_T, j)] -= m_factor * (T(x, j) - m_T_wall);
             }
 
@@ -1467,6 +1467,8 @@ void Flow1D::setNonAdiabaticWall(const AnyMap& params)
     writelog("    Fuel species: {}\n", m_fuel);
     writelog("    Oxidizer species: {}\n", m_oxidizer);
     writelog("    Basis: {}\n", m_mix_basis == ThermoBasis::mass ? "mass" : "molar");
+
+    m_do_non_adiabatic_wall = true;
 
 }
 

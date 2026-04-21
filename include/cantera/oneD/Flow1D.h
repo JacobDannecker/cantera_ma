@@ -1056,6 +1056,9 @@ public:
 
     //! Basis for mixture fraction calculation (mass or mole)
     ThermoBasis m_mix_basis = ThermoBasis::mass;
+	
+    //! Non adiabatic wall active
+    bool m_do_non_adiabatic_wall = false;
 
     void setNonAdiabaticWall(const AnyMap& params);
 

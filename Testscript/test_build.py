@@ -20,8 +20,8 @@ f.oxidizer_inlet.T = 300
 
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
-#f.set_initial_guess(data="Testscript/Data/wall-no_wall.h5", group="no_wall") 
-# Set up parameters as a dictionary
+f.set_initial_guess(data="Testscript/Data/wall-no_wall.h5", group="no_wall") 
+# Set up wall 
 params = {
     'Z_wall': 0.9,
     'T_wall': 300.0,
