@@ -648,6 +648,8 @@ void Flow1D::evalLambda(span<const double> x, span<double> rsd, span<int> diag,
 void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
                         double rdt, size_t jmin, size_t jmax)
 {
+
+    writelog("zwall: {}, Twall: {}, factor: {}, mix_frac: {} \n", m_Z_wall, m_T_wall, m_factor, m_mix_frac);
     if (jmin == 0) { // left boundary
         rsd[index(c_offset_T, jmin)] = T(x, jmin);
     }
@@ -663,7 +665,7 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
         if (m_do_energy[j]) {
             setGas(x, j);
             // Note: call setFuelOxComposition(fuel, ox) once at setup time
-            double Z = m_thermo->mixtureFraction("H2:1", "O2:1", ThermoBasis::mass, "Bilger");
+            double Z = m_thermo->mixtureFraction("H2:1", "O2:1", ThermoBasis::mass, m_mix_frac);
             grad_hk(x, j);
             double sum = 0.0;
             for (size_t k = 0; k < m_nsp; k++) {
@@ -678,8 +680,8 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
 	    rsd[index(c_offset_T, j)] -= (m_qdotRadiation[j] / (m_rho[j] * m_cp[j]));
 
 
-            if (Z >= m_wall_pos) {
-                rsd[index(c_offset_T, j)] -= m_factor * (T(x, j) - 300);
+            if (Z >= m_Z_wall) {
+                rsd[index(c_offset_T, j)] -= m_factor * (T(x, j) - m_T_wall);
             }
 
 
@@ -1426,6 +1428,22 @@ void Flow1D::enableTwoPointControl(bool twoPointControl)
         throw CanteraError("Flow1D::enableTwoPointControl",
             "Invalid operation: two-point control can only be used"
             "with axisymmetric flames.");
+    }
+}
+
+void Flow1D::setParameters(const AnyMap& params)
+{
+    if (params.hasKey("Z_wall")) {
+        m_Z_wall = params.at("Z_wall").asDouble();
+    }
+    if (params.hasKey("T_wall")) {
+        m_T_wall = params.at("T_wall").asDouble();
+    }
+    if (params.hasKey("factor")) {
+        m_factor = params.at("factor").asDouble();
+    }
+    if (params.hasKey("mix_frac")) {
+        m_mix_frac = params.at("mix_frac").asString();
     }
 }
 
