@@ -20,12 +20,19 @@ f.oxidizer_inlet.T = 300
 
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
-wall_pos = 0.9
-factor = 1000000000
+#f.set_initial_guess(data="Testscript/Data/wall-no_wall.h5", group="no_wall") 
+# Set up parameters as a dictionary
+params = {
+    'Z_wall': 0.9,
+    'T_wall': 300.0,
+    'factor': 100000000,
+    'mix_frac': 'Bilger'
+}
+f.flame.set_parameters(params)
 f.transport_model = "unity-Lewis-number"
-f.set_initial_guess(data="Testscript/Data/wall-no_wall.h5", group="no_wall") 
-f.solve(loglevel=1, wall_pos=wall_pos, factor=factor)
-f.save("Testscript/Data/wall-no_wall.h5", name="wall", overwrite=True)
+f.solve(loglevel=1)
+print(f.transport_model)
+f.save("Testscript/Data/wall-no_wall.h5", name="dict", overwrite=True)
 f2.restore("Testscript/Data/wall-no_wall.h5", name="no_wall")
 
 
