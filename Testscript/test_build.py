@@ -20,8 +20,8 @@ f.oxidizer_inlet.T = 300
 
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
-wall_pos = 0.9
-factor = 10000000000
+wall_pos = 0.8
+factor = 1000000000
 f.transport_model = "unity-Lewis-number"
 f.set_initial_guess(data="Testscript/Data/wall-no_wall.h5", group="no_wall") 
 f.solve(loglevel=1, wall_pos=wall_pos, factor=factor)
