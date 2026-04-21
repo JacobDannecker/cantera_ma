@@ -1033,10 +1033,10 @@ public:
     double m_tfixed = -1.0;
 
     //! Wall position used in energy equation
-    int m_wall_pos = 99;
+    double m_wall_pos = 0.1;
 
     //! Factor used in energy equation
-    int m_factor = 199;
+    int m_factor = 1000;
 
 private:
     //! Holds the average of the species mass fractions between grid points j and j+1.

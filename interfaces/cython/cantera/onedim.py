@@ -1037,7 +1037,7 @@ class CounterflowDiffusionFlame(FlameBase):
     def extinct(self):
         return max(self.T) - max(self.fuel_inlet.T, self.oxidizer_inlet.T) < 10
 
-    def solve(self, loglevel=1, refine_grid=True, auto=False, wall_pos=12, factor=22):
+    def solve(self, loglevel=1, refine_grid=True, auto=False, wall_pos=0.1, factor=1000):
         """
         Solve the problem.
 

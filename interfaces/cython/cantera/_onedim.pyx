@@ -1156,7 +1156,7 @@ cdef class Sim1D:
         """
         return False
 
-    def solve(self, loglevel=1, refine_grid=True, auto=False, wall_pos=12, factor=22):
+    def solve(self, loglevel=1, refine_grid=True, auto=False, wall_pos=0.1, factor=1000):
         """
         Solve the problem.
 
