@@ -8,6 +8,7 @@
 
 #include "Domain1D.h"
 #include "OneDim.h"
+#include "cantera/base/AnyMap.h"
 #include "cantera/base/Array.h"
 #include "cantera/base/Solution.h"
 #include "cantera/thermo/ThermoPhase.h"
@@ -1036,7 +1037,18 @@ public:
     double m_wall_pos = 0.1;
 
     //! Factor used in energy equation
-    int m_factor = 1000;
+    double m_factor = 1000.0;
+
+    //! Wall position for boundary condition (Z-coordinate)
+    double m_Z_wall = 0.1;
+
+    //! Wall temperature
+    double m_T_wall = 300.0;
+
+    //! Mixture fraction species name
+    string m_mix_frac = "H";
+
+    void setParameters(const AnyMap& params);
 
 private:
     //! Holds the average of the species mass fractions between grid points j and j+1.
