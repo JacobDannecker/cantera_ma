@@ -358,8 +358,6 @@ class BurnerFlame(FlameBase):
         loglevel: LogLevel = 1,
         refine_grid: bool = True,
         auto: bool = False,
-        wall_pos = 0.1,
-        factor = 1000,
     ) -> None: ...
 
 class CounterflowDiffusionFlame(FlameBase):
