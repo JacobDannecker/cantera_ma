@@ -25,7 +25,7 @@ f.set_initial_guess(data="Testscript/Data/wall-no_wall.h5", group="no_wall")
 params = {
     'Z_wall': 0.9,
     'T_wall': 300.0,
-    'factor': 100000000,
+    'factor': 19,
     'mix_frac': 'Bilger',
     'fuel': 'H2',
     'oxidizer': 'O2',
@@ -35,7 +35,7 @@ f.flame.set_non_adiabatic_wall(params)
 f.transport_model = "unity-Lewis-number"
 f.solve(loglevel=1)
 print(f.transport_model)
-f.save("Testscript/Data/wall-no_wall.h5", name="dict", overwrite=True)
+f.save("Testscript/Data/wall-no_wall.h5", name="wall", overwrite=True)
 f2.restore("Testscript/Data/wall-no_wall.h5", name="no_wall")
 
 
