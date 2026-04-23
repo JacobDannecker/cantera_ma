@@ -71,9 +71,9 @@ fig.suptitle("H2/O2")
 for name in names:
     f.restore(file_path, name=name)
     # Subplot 1 Temp 
-    ax[0].plot(f.mixture_fraction("H"), f.T, label=f"With Wall chi_st: {chi_st_new:.2f}")
+    ax[0].plot(f.mixture_fraction("H"), f.T, label=f"With Wall chi_st: {chi_stoich(f):.2f}")
     # Subplot 2  enthalpy
-    ax[1].plot(f.mixture_fraction("H"), f.h, label=f"With Wall chi_st: {chi_st_new:.2f}")
+    ax[1].plot(f.mixture_fraction("H"), f.h, label=f"With Wall chi_st: {chi_stoich(f):.2f}")
 
 ax[1].grid()
 ax[1].legend()
