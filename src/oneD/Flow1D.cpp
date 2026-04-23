@@ -676,10 +676,14 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
             rsd[index(c_offset_T, j)] /= (m_rho[j]*m_cp[j]);
 	    rsd[index(c_offset_T, j)] -= (m_qdotRadiation[j] / (m_rho[j] * m_cp[j]));
 
+	    // Ad sink for all points up until wall if non adiabatic wall is active
 	    if (m_do_non_adiabatic_wall) {
 		double Z = m_thermo->mixtureFraction(m_fuel, m_oxidizer, m_mix_basis, m_mix_frac);
+		//double test = j*j*j*j;
             	if (Z >= m_Z_wall) {
-                	rsd[index(c_offset_T, j)] -= m_factor * (T(x, j) - m_T_wall);
+                	rsd[index(c_offset_T, j)] -= m_factor * (T(x, j) - m_T_wall)*(T(x, j) - m_T_wall)*(T(x, j) - m_T_wall)*(T(x, j) - m_T_wall);
+			writelog("Gridpoint: {} T(x,j) - m_T_wall: {} factor: {}, sinktotal: {}\n", j, T(x,j)-m_T_wall, m_factor, m_factor * (T(x, j) - m_T_wall)*(T(x, j) - m_T_wall)*(T(x, j) - m_T_wall)*(T(x, j) - m_T_wall)
+);
             }}
 
 
