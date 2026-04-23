@@ -3,29 +3,28 @@ import cantera as ct
 from scipy import special
 from matplotlib import pyplot as plt
 
-reaction_mechanism = 'h2o2.yaml'
+reaction_mechanism = "h2o2.yaml"
 gas = ct.Solution(reaction_mechanism)
 width = 18e-3  
 
-grid = np.linspace(0., width, 250)
 f = ct.CounterflowDiffusionFlame(gas, width=width)
 f2 = ct.CounterflowDiffusionFlame(gas, width=width)
 f.P = 1.e5  
 f.fuel_inlet.mdot = 0.5  
-f.fuel_inlet.X = 'H2:1'
+f.fuel_inlet.X = "H2:1"
 f.fuel_inlet.T = 300 
 f.oxidizer_inlet.mdot = 3.0 
-f.oxidizer_inlet.X = 'O2:1'
+f.oxidizer_inlet.X = "O2:1"
 f.oxidizer_inlet.T = 300 
 
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
-f.set_initial_guess(data="Testscript/Data/wall-no_wall.h5", group="no_wall") 
+f.set_initial_guess(data="Testscript/Data/wall-no_wall.h5", group="0135") 
 # Set up wall 
 params = {
-    'Z_wall': 0.9,
+    'Z_wall': 0.12,
     'T_wall': 300.0,
-    'factor': 19,
+    'factor': 1,
     'mix_frac': 'Bilger',
     'fuel': 'H2',
     'oxidizer': 'O2',
