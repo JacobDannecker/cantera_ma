@@ -644,7 +644,6 @@ void Flow1D::evalLambda(span<const double> x, span<double> rsd, span<int> diag,
         diag[index(c_offset_L, j)] = 0;
     }
 }
-
 void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
                         double rdt, size_t jmin, size_t jmax)
 {
@@ -660,6 +659,9 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
     // j0 and j1 are constrained to only interior points
     size_t j0 = std::max<size_t>(jmin, 1);
     size_t j1 = std::min(jmax, m_points-2);
+    
+    //factor = pow((1-m_Z_wall), 4) * m_factor;
+
     for (size_t j = j0; j <= j1; j++) {
         if (m_do_energy[j]) {
             setGas(x, j);
@@ -676,10 +678,15 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
             rsd[index(c_offset_T, j)] /= (m_rho[j]*m_cp[j]);
 	    rsd[index(c_offset_T, j)] -= (m_qdotRadiation[j] / (m_rho[j] * m_cp[j]));
 
+	    // Ad sink for all points up until wall if non adiabatic wall is active
 	    if (m_do_non_adiabatic_wall) {
 		double Z = m_thermo->mixtureFraction(m_fuel, m_oxidizer, m_mix_basis, m_mix_frac);
+		double sink = 0;
             	if (Z >= m_Z_wall) {
-                	rsd[index(c_offset_T, j)] -= m_factor * (T(x, j) - m_T_wall);
+                	rsd[index(c_offset_T, j)] -=  m_factor * (T(x, j) - m_T_wall) *  pow(T(x, j), 4); //* 1/(1-Z) * pow((T(x, j) - m_T_wall), 4);
+			//m_factor * pow((T(x, j) - m_T_wall), 4);
+			sink = m_factor * (T(x, j) - m_T_wall) *  pow(T(x, j), 4);
+			writelog("Gridpoint: {}, Z: {}, T(x,j) - m_T_wall: {} factor: {}, sinktotal: {}\n", j, Z, (T(x,j) - m_T_wall), m_factor, sink);
             }}
 
 
