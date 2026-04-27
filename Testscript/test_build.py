@@ -20,13 +20,13 @@ f.oxidizer_inlet.T = 300
 z_stoich = 0.111
 
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
-
-f.set_initial_guess(data="Testscript/Data/wall-no_wall.h5", group="no_wall") 
+file_name = "Testscript/Data/test.h5"
+f.set_initial_guess(data=file_name, group="0690") 
 # Set up wall 
 params = {
-    'Z_wall': 0.7,
+    'Z_wall': 0.5,
     'T_wall': 300.0,
-    'factor': 1,
+    'factor': 10e8,
     'mix_frac': 'Bilger',
     'fuel': 'H2',
     'oxidizer': 'O2',
@@ -42,8 +42,8 @@ end = time.time()
 print(end - start)
 
 print(f.transport_model)
-f.save("Testscript/Data/wall-no_wall.h5", name="wall", overwrite=True)
-f2.restore("Testscript/Data/wall-no_wall.h5", name="no_wall")
+f.save(file_name, name="0690", overwrite=True)
+f2.restore(file_name, name="no_wall")
 
 
 def chi_stoich(f, z_stoich):

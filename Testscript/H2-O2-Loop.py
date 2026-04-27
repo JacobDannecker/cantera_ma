@@ -43,7 +43,7 @@ wall_params = {
 }
 
 # Loop over z
-delta_z = 0.1
+delta_z = 0.5
 last_z_working = 1
 z = 1
 error_counter = 0
@@ -87,8 +87,8 @@ while True:
         z = last_z_working
         #wall_params["factor"] *= 0.9 
         print(f"Factor: {wall_params["factor"]}")
-        delta_z *= 0.5
-        if error_counter > 2: 
+        #delta_z *= 0.5
+        if error_counter > 0: 
             break 
         continue
     name = "z_wall_" + str(z)
