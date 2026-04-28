@@ -21,12 +21,12 @@ z_stoich = 0.111
 
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 file_name = "Testscript/Data/test.h5"
-f.set_initial_guess(data=file_name, group="0690") 
+f.set_initial_guess(data=file_name, group="0400") 
 # Set up wall 
 params = {
-    'Z_wall': 0.5,
-    'T_wall': 300.0,
-    'factor': 10e8,
+    'Z_wall': 0.4,
+    'T_wall': 300,
+    'factor': 1550000,
     'mix_frac': 'Bilger',
     'fuel': 'H2',
     'oxidizer': 'O2',
@@ -42,7 +42,7 @@ end = time.time()
 print(end - start)
 
 print(f.transport_model)
-f.save(file_name, name="0690", overwrite=True)
+f.save(file_name, name="0400", overwrite=True)
 f2.restore(file_name, name="no_wall")
 
 
