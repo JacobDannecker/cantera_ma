@@ -21,7 +21,7 @@ z_stoich = 0.111
 
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 file_name = "Testscript/Data/test.h5"
-f.set_initial_guess(data=file_name, group="0400") 
+f.set_initial_guess(data=file_name, group="no_wall") 
 # Set up wall 
 params = {
     'Z_wall': 0.4,
@@ -40,7 +40,7 @@ start = time.time()
 f.solve(loglevel=1, refine_grid=True)
 end = time.time()
 print(end - start)
-
+print(f.enthalpy_mass)
 print(f.transport_model)
 f.save(file_name, name="0400", overwrite=True)
 f2.restore(file_name, name="no_wall")
@@ -91,7 +91,7 @@ ax[1].set_xlabel("<- ox z fuel ->")
 # Fig1 enthalpy subplot 3
 ax[2].plot(f.mixture_fraction("H"), f.h, label=f"With Wall chi_st: {chi_st_new:.2f}")
 ax[2].plot(f2.mixture_fraction("H"), f2.h, label=f"No Wall chi_st: {chi_st_ref:.2f}", linestyle="--")
-#ax[2].scatter(f.mixture_fraction("H"), f.h)
+##ax[2].scatter(f.mixture_fraction("H"), f.h)
 #f2.mixture_fraction("H"),
 ax[2].grid()
 ax[2].legend()

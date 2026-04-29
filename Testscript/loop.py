@@ -3,7 +3,40 @@ import cantera as ct
 from scipy import special
 from matplotlib import pyplot as plt
 import time 
+import h5py
 
+def chi_stoich(f, z_stoich):
+        #a = f.strain_rate("mean")
+        a = np.mean(np.abs(np.gradient(f.velocity) / np.gradient(f.grid)))
+        chi_stoich = a*np.pi*(np.exp(-2*((special.erfinv(1-2*z_stoich))**2)))
+        return chi_stoich
+
+
+def add_attributes(f, file_path, wall_params, z_stoich):
+    z_array = f.mixture_fraction(wall_params["mix_frac"])
+    h_mass_array = f.enthalpy_mass
+    h_mole_array = f.enthalpy_mole
+    hdf5_file = h5py.File(file_path, "a")
+    group_z = name + "/flame/z"
+    group_h_mass = name + "/flame/h_mass"
+    group_h_mole = name + "/flame/h_mole"
+    # Data
+    hdf5_file.create_dataset(name=group_z, data=z_array)
+    hdf5_file.create_dataset(name=group_h_mass, data=h_mass_array)
+    hdf5_file.create_dataset(name=group_h_mole, data=h_mole_array)
+    # Attributes
+    hdf5_file[group_z].add_attr = "mix_frac"
+    hdf5_file[group_z].add_attr = "fuel"
+    hdf5_file[group_z].add_attr = "oxidizer"
+    hdf5_file[group_z].add_attr = "basis"
+    hdf5_file[group_z].add_attr = "chi_st"
+    hdf5_file[group_z].attrs["mix_frac"] = wall_params["mix_frac"]
+    hdf5_file[group_z].attrs["fuel"] = wall_params["fuel"]
+    hdf5_file[group_z].attrs["oxidizer"] = wall_params["oxidizer"]
+    hdf5_file[group_z].attrs["basis"] = wall_params["basis"]
+    hdf5_file[group_z].attrs["chi_st"] = chi_stoich(f, z_stoich)
+    hdf5_file.close()
+ 
 # Flame settings
 reaction_mechanism = "h2o2.yaml"
 gas = ct.Solution(reaction_mechanism)
@@ -11,7 +44,7 @@ width = 18e-3
 grid = np.linspace(0, width, 150)
 f = ct.CounterflowDiffusionFlame(gas, grid=grid)
 f.P = 1.e5  
-f.fuel_inlet.mdot = 0.5  
+f.fuel_inlet.mdot = 0.5 
 f.fuel_inlet.X = "H2:1"
 f.fuel_inlet.T = 300 
 f.oxidizer_inlet.mdot = 3.0 
@@ -19,16 +52,6 @@ f.oxidizer_inlet.X = "O2:1"
 f.oxidizer_inlet.T = 300 
 z_stoich = 0.111
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
-
-# Names
-name = "no_wall"
-names = [name,]
-file_path = "Testscript/Data/loop.h5" 
-
-# Initial solution no wall
-f.transport_model = "unity-Lewis-number"
-f.solve(loglevel=0, refine_grid=True)
-f.save(file_path, name=name, overwrite=True)
 
 # Wall 
 wall_params = {
@@ -41,9 +64,20 @@ wall_params = {
     'basis': 'mass'
 }
 
+# Names
+name = "no_wall"
+names = [name,]
+file_path = "Testscript/Data/RunEnth1.h5" 
+
+# Initial solution no wall
+f.transport_model = "unity-Lewis-number"
+f.solve(loglevel=0, refine_grid=True)
+f.save(file_path, name=name, overwrite=True)
+add_attributes(f, file_path, wall_params, z_stoich)
+
 # Loop settings 
 z = 1
-delta_z = 0.6
+delta_z = 0.1
 last_z_working = 1
 error_counter = 0
 max_errors = 3
@@ -57,6 +91,8 @@ start_time = time.time()
 while True: 
     z -= delta_z
     if z < 0.1: # Add check for extinct flame
+        break
+    if flame_is_extinct:
         break
     # Try calculating initial guess with factor = 1
     try:
@@ -84,14 +120,14 @@ while True:
             print(f"Succes in factor increase loop. Delta T wall: {delta_T_wall}")
             if (np.max(f.T) < 310):
                 print("Flame is extinct!")
-                falme_is_extinct=True
-                break
+                flame_is_extinct=True
         except BaseException as err:
             error_counter += 1
             print(f"Errors ins z = {z}: {error_counter}")
             print(err)
             #wall_params["factor"] /= factor_increase
-            factor_increase *= 0.9
+            if factor_increase > 1.2:
+                factor_increase *= 0.9
             if error_counter > max_errors:
                 print(f"max_errors_reached true, error_counter: {error_counter}")
               #  # Reset factor 
@@ -121,24 +157,15 @@ while True:
             print("##############################################################################")
             name = "z_wall_" + str(z)
             f.save(file_path, name=name, overwrite=True)
+            add_attributes(f, file_path, wall_params, z_stoich)
             names.append(name)
             break
-    if flame_is_extinct:
-        name = "z_wall_" + str(z)
-        f.save(file_path, name=name, overwrite=True)
-        names.append(name)
-        break
 
 end_time = time.time()
 print(f"Total time loop: {end_time-start_time}")
 print(f"Failed at z: {failed_z}")
 
 
-def chi_stoich(f, z_stoich):
-        #a = f.strain_rate("mean")
-        a = np.mean(np.abs(np.gradient(f.velocity) / np.gradient(f.grid)))
-        chi_stoich = a*np.pi*(np.exp(-2*((special.erfinv(1-2*z_stoich))**2)))
-        return chi_stoich
 
 
 # Plot
