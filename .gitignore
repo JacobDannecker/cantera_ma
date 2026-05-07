@@ -67,3 +67,5 @@ Testscript/Data/**
 Testscript/loop.hmm
 Testscript/plot.hmm
 Testscript/.loop.py.swp
+Scripts/Data/*
+Scripts/.UnstableWall.py.swp

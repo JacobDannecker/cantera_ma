@@ -6,7 +6,7 @@ import h5py
 
 
 #file_list = ["Testscript/Data/Run1.h5", "Testscript/Data/Run2.h5", "Testscript/Data/Run3.h5", "Testscript/Data/Run4.h5", "Testscript/Data/Run5.h5"]
-file_list = ["Testscript/Data/RunEnth1.h5", "Testscript/Data/RunEnth2.h5", "Testscript/Data/RunEnth3.h5", "Testscript/Data/RunEnth4.h5", "Testscript/Data/RunEnth5.h5", "Testscript/Data/RunEnth7.h5", "Testscript/Data/RunEnth8.h5", "Testscript/Data/RunEnth9.h5" ]
+file_list = ["Testscript/Data/RunEnth1.h5", "Testscript/Data/RunEnth2.h5", "Testscript/Data/RunEnth3.h5", "Testscript/Data/RunEnth4.h5", "Testscript/Data/RunEnth5.h5", "Testscript/Data/RunEnth7.h5", "Testscript/Data/RunEnth8.h5", "Testscript/Data/RunEnth9.h5", "Testscript/Data/RunEnth10.h5"]
 quantity = ["T"]
 z_stoich = 0.111
 n_x = 200 

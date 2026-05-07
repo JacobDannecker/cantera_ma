@@ -44,12 +44,12 @@ width = 18e-3
 grid = np.linspace(0, width, 150)
 f = ct.CounterflowDiffusionFlame(gas, grid=grid)
 f.P = 1.e5  
-f.fuel_inlet.mdot = 5. 
+f.fuel_inlet.mdot = 0.5 
 f.fuel_inlet.X = "H2:1"
-f.fuel_inlet.T = 300 
-f.oxidizer_inlet.mdot = 7.5 
+f.fuel_inlet.T = 500 
+f.oxidizer_inlet.mdot = 0.5 
 f.oxidizer_inlet.X = "O2:1"
-f.oxidizer_inlet.T = 300 
+f.oxidizer_inlet.T = 500 
 z_stoich = 0.111
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
@@ -67,7 +67,7 @@ wall_params = {
 # Names
 name = "no_wall"
 names = [name,]
-file_path = "Testscript/Data/RunEnth10.h5" 
+file_path = "Testscript/Data/z_080.h5" 
 
 # Initial solution no wall
 f.transport_model = "unity-Lewis-number"
@@ -76,36 +76,35 @@ f.save(file_path, name=name, overwrite=True)
 add_attributes(f, file_path, wall_params, z_stoich)
 
 # Loop settings 
-z = 1
-delta_z = 0.1
-last_z_working = 1
+z_wall_spec = 0.8
+T_wall = 500
+mdot = 0.5
+
 error_counter = 0
 max_errors = 3
 failed_once = False
 max_errors_reached = False
 flame_is_extinct = False
 factor_increase = 2 
-failed_z = []
+failed_mdot = []
 
+wall_params["Z_wall"] = z_wall_spec
+wall_params["T_wall"] = 500
 start_time = time.time()
-while True: 
-    z -= delta_z
-    if z < 0.1: # Add check for extinct flame
-        break
-    if flame_is_extinct:
-        break
-    # Try calculating initial guess with factor = 1
+while not flame_is_extinct: 
+    mdot += 0.5
     try:
-        wall_params["Z_wall"] = z 
         wall_params["factor"] = 1 
+        f.fuel_inlet.mdot = mdot
+        f.oxidizer_inlet.mdot = mdot
         f.set_initial_guess(data=file_path, group=names[0]) 
         f.flame.set_non_adiabatic_wall(wall_params)
         f.transport_model = "unity-Lewis-number"
-        print(f"Solving for z: {z} with factor = 1") 
+        print(f"Solving for mdot: {mdot} wiht factor = 1" ) 
         f.solve(loglevel=0, fefine_grid=True)
-        print(f"Success for initial solution with factor = 1 at z: {z}")
+        print(f"Success for initial solution with factor = 1 at mdot: {mdot}")
     except:
-        print(f"Failed initial solution with factor = 1 at z: {z}\n Conitune with increasing factor")
+        print(f"Failed initial solution with factor = 1 at mdot: {mdot}\n Conitune with increasing factor")
         pass
 
     
@@ -123,7 +122,7 @@ while True:
                 flame_is_extinct=True
         except BaseException as err:
             error_counter += 1
-            print(f"Errors ins z = {z}: {error_counter}")
+            print(f"Errors ins mdot = {mdot}: {error_counter}")
             print(err)
             #wall_params["factor"] /= factor_increase
             if factor_increase > 1.2:
@@ -142,20 +141,20 @@ while True:
                 error_counter = 0
                 if failed_once:
                     # Abort when starting form no_wall solution also fails
-                    print(f"No solution found at z{z}")
-                    failed_z.append(z)
+                    print(f"No solution found at mdot{mdot}")
+                    failed_mdot.append(mdot)
                     failed_once = False
                     break
                 print("Try with initial solution as ininital guess.")
                 failed_once  = True
                 continue
         if delta_T_wall < 1:
-            # Solution is close enough. Try next z.
+            # Solution is close enough. Try next mdot.
             error_counter = 0
             print("\n##############################################################################")
-            print(f"Solved at z: {z}")
+            print(f"Solved at mdot: {mdot}")
             print("##############################################################################")
-            name = "z_wall_" + str(z)
+            name = "mdot_" + str(mdot)
             f.save(file_path, name=name, overwrite=True)
             add_attributes(f, file_path, wall_params, z_stoich)
             names.append(name)
@@ -163,7 +162,7 @@ while True:
 
 end_time = time.time()
 print(f"Total time loop: {end_time-start_time}")
-print(f"Failed at z: {failed_z}")
+print(f"Failed at mdot: {failed_mdot}")
 
 
 
@@ -175,12 +174,12 @@ for name in names:
     f.restore(file_path, name=name)
     # Subplot 1 Temp 
     if name == "no_wall":
-        z = 1
+        mdot = 1
     else:
-        z = float(name.strip("z_wall_"))
-    ax[0].plot(f.mixture_fraction("H"), f.T, label=f"{z:.2f} chi_st: {chi_stoich(f, z_stoich):.2f}")
+        mdot = float(name.strip("mdot_"))
+    ax[0].plot(f.mixture_fraction("H"), f.T, label=f"{mdot:.2f} chi_st: {chi_stoich(f, z_stoich):.2f}")
     # Subplot 2  enthalpy
-    ax[1].plot(f.mixture_fraction("H"), f.h, label=f"{z:.2f} chi_st: {chi_stoich(f, z_stoich):.2f}")
+    ax[1].plot(f.mixture_fraction("H"), f.h, label=f"{mdot:.2f} chi_st: {chi_stoich(f, z_stoich):.2f}")
 
 ax[0].grid()
 ax[0].legend()
