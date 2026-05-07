@@ -78,6 +78,14 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., fac
         f.set_initial_guess(data=file_path, group=names[0])                 
         f.flame.set_non_adiabatic_wall(wall_params)                         
         print(f"Solving for z_wall: {z_wall} with factor = 1")                        
+        if control_params:
+            print(f"{control_params["control_temperature"], control_params["left_control_point_temperature"], control_params["right_control_point_temperature"]}")
+            f.set_left_control_point(control_params["control_temperature"])
+            f.set_right_control_point(control_params["control_temperature"])
+            f.left_control_point_temperature = control_params["left_control_point_temperature"]
+            f.right_control_point_temperature = control_params["right_control_point_temperature"]
+
+
         f.solve(loglevel=loglevel, fefine_grid=True)                               
         print(f"Success with factor = 1 at z_wall: {z_wall}")    
     except:                                                                 
@@ -85,20 +93,27 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., fac
         print(f"Conitune with increasing factor.")
         wall_params["factor"] = 100                                             
     while not delta_T_ok or failed:                                                             
+        if control_params:
+            print(f"{control_params["control_temperature"], control_params["left_control_point_temperature"], control_params["right_control_point_temperature"]}")
+            f.set_left_control_point(control_params["control_temperature"])
+            f.set_right_control_point(control_params["control_temperature"])
+            f.left_control_point_temperature = control_params["left_control_point_temperature"]
+            f.right_control_point_temperature = control_params["right_control_point_temperature"]
+
         try:                                                                
             wall_params["factor"] *= factor_increase                        
             f.flame.set_non_adiabatic_wall(wall_params)                     
             f.solve(loglevel=loglevel, refine_grid=True)                           
             delta_T_wall = get_delta_T(f, wall_params)
-            plt.plot(f.mixture_fraction("H"), f.T)
+            #plt.plot(f.mixture_fraction("H"), f.T)
             if delta_T_wall < delta_T_max:
-                print(f.fuel_inlet.mdot, f.oxidizer_inlet.mdot)
-                print(f.strain_rate("max"))
-                plt.show()
-                plt.plot(clear=True)
+                print(f"mdot f, o : {f.fuel_inlet.mdot}, {f.oxidizer_inlet.mdot}")
+                print(f"Strain max: {f.strain_rate("max")}")
+                #plt.show()
+                #plt.plot(clear=True)
                 delta_T_ok = True
             print(f"Solution found at delta_T_wall: {delta_T_wall}")
-        except BaseException as err:      
+        except ct.CanteraError as err:      
             print(err)                                                      
             error_counter += 1
             print(f"Error count {error_counter}")
@@ -128,7 +143,7 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., fac
         if error_counter > 5:
             print("No solution found. error_counter: {error_counter}")
             failed = True 
-            raise BaseException("No solution with wall found!!!!!!!!!!!!")
+            raise ct.CanteraError("No solution with wall found!!!!!!!!!!!!")
          
 
 # Flame settings                                                            
@@ -177,21 +192,21 @@ save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True)
 # Flame Continuation
 trapezoid = getattr(np, "trapezoid", None) or np.trapz
 # Maximum number of steps to take
-n_max = 200 
+n_max = 15 
 
 # Relative temperature defining control point locations, with 1 being the peak
 # temperature and 0 being the inlet temperature. Lower values tend to avoid solver
 # failures early on, while using higher values on the unstable branch tend to help
 # with finding solutions where the peak temperature is very low.
-initial_spacing = 0.6
+initial_spacing = 0.9
 unstable_spacing = 0.95
 
 # Amount to adjust temperature at the control point each step [K]
 temperature_increment = 20.0
-max_increment = 400 
+max_increment = 100 
 
 # Try to keep T_max from changing more than this much each step [K]
-target_delta_T_max = 200 
+target_delta_T_max = 20 
 
 # Stop after this many successive errors
 max_error_count = 3
@@ -227,11 +242,24 @@ for i in range(n_max):
     logger.debug(f'Iteration {i}: Control temperature = {control_temperature:.2f} K')
     f.set_left_control_point(control_temperature)
     f.set_right_control_point(control_temperature)
-
+    print(f"Temperature increment = {temperature_increment}")
+    print(control_temperature, f.left_control_point_temperature, f.right_control_point_temperature)
     # This decrement is what drives the two-point control. If failure
     # occurs, try decreasing the decrement.
-    f.left_control_point_temperature -= temperature_increment
-    f.right_control_point_temperature -= temperature_increment
+    delta_left =  f.left_control_point_temperature - control_temperature 
+    delta_right = f.right_control_point_temperature - control_temperature 
+    if delta_left > 0:
+        f.left_control_point_temperature -= (temperature_increment*0.5 + delta_left)
+    else: 
+        f.left_control_point_temperature -= temperature_increment
+
+    if delta_right > 0:
+        f.right_control_point_temperature -= (temperature_increment*0.5 + delta_right)
+    else: 
+        f.right_control_point_temperature -= temperature_increment
+    
+    print(control_temperature, f.left_control_point_temperature, f.right_control_point_temperature)
+   
     f.clear_stats()
     control_params = {"control_temperature": control_temperature,
                       "left_control_point_temperature": f.left_control_point_temperature,
@@ -248,13 +276,13 @@ for i in range(n_max):
     try:
         solve_with_wall(f, wall_params, name_fallback=backup_state, delta_T_max=1.0, loglevel=0, control_params=control_params)
 
-        print("After solve with wall")
-        if abs(max(f.T) - T_max) < 0.8 * target_delta_T_max:
-            # Max temperature is changing slowly. Try a larger increment next step
-            temperature_increment = min(temperature_increment + 3, max_increment)
-        elif abs(max(f.T) - T_max) > target_delta_T_max:
-            # Max temperature is changing quickly. Scale down increment for next step
-            temperature_increment *= 0.9 * target_delta_T_max / (abs(max(f.T) - T_max))
+        #print("After solve with wall")
+        #if abs(max(f.T) - T_max) < 0.8 * target_delta_T_max:
+        #    # Max temperature is changing slowly. Try a larger increment next step
+        #    temperature_increment = min(temperature_increment + 3, max_increment)
+        #elif abs(max(f.T) - T_max) > target_delta_T_max:
+        #    # Max temperature is changing quickly. Scale down increment for next step
+        #    temperature_increment *= 0.9 * target_delta_T_max / (abs(max(f.T) - T_max))
         error_count = 0
     except ct.CanteraError as err:
         logger.debug(err)
