@@ -1470,7 +1470,7 @@ void Flow1D::setNonAdiabaticWall(const AnyMap& params)
         }
     }
 
-    writelog("Non adiabatic wall active:\n");
+/*    writelog("Non adiabatic wall active:\n");
     writelog("    Wall position: {:.4f}\n", m_Z_wall);
     writelog("    Wall temperature: {:.1f} K\n", m_T_wall);
     writelog("    Factor: {:.2e}\n", m_factor);
@@ -1478,7 +1478,7 @@ void Flow1D::setNonAdiabaticWall(const AnyMap& params)
     writelog("    Fuel species: {}\n", m_fuel);
     writelog("    Oxidizer species: {}\n", m_oxidizer);
     writelog("    Basis: {}\n", m_mix_basis == ThermoBasis::mass ? "mass" : "molar");
-
+*/
     m_do_non_adiabatic_wall = true;
 
 }
