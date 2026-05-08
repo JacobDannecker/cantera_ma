@@ -34,44 +34,22 @@ params = {
 }
 f.flame.set_non_adiabatic_wall(params)
 f.transport_model = "unity-Lewis-number"
-f.two_point_control_enabled = True
-f.set_left_control_point(2700)
-f.set_right_control_point(2700)
-print(f.left_control_point_temperature)
-print(f.right_control_point_temperature)
-f.left_control_point_temperature = 2600 
-f.right_control_point_temperature = 2600 
+#f.two_point_control_enabled = True
+#f.set_left_control_point(2700)
+#f.set_right_control_point(2700)
+#print(f.left_control_point_temperature)
+#print(f.right_control_point_temperature)
+#f.left_control_point_temperature = 2600 
+#f.right_control_point_temperature = 2600 
 f.max_time_step_count = 500
 start = time.time()
 f.solve(loglevel=1, refine_grid=True)
 end = time.time()
-print(f.fuel_inlet.mdot, f.oxidizer_inlet.mdot)
 print(end - start)
 print(np.max(f.T))
-print(f.enthalpy_mass)
-print(f.transport_model)
-f.save(file_name, name="tp_1", overwrite=True)
+f.save(file_name, name="0800", overwrite=True)
 
-params = {
-    'Z_wall': 0.8,
-    'T_wall': 300,
-    'factor': 1e10,
-    'mix_frac': 'Bilger',
-    'fuel': 'H2',
-    'oxidizer': 'O2',
-   'basis': 'mass'
-}
-f.flame.set_non_adiabatic_wall(params)
-f.solve(loglevel=1, refine_grid=True)
-print(f.right_control_point_temperature)
-print(f.left_control_point_temperature)
-print(np.max(f.T))
-f.save(file_name, name="tp_2", overwrite=True)
-
-
-
-
-f2.restore(file_name, name="tp_1")
+f2.restore(file_name, name="no_wall")
 
 
 def chi_stoich(f, z_stoich):
@@ -98,32 +76,31 @@ print(f"chi_st reference: {chi_st_ref}")
 idx_H2 = f.gas.species_index("H2")
 idx_O2 = f.gas.species_index("O2")
 
-# Fig 1 temp subplot 1
+# Fig 1 subplot 1
 fig, ax = plt.subplots(3, 1)
 fig.suptitle(" H2/O2") 
 
-#ax[0].plot(f.grid, f.T, label=f"With Wall chi_st: {chi_st_new:.2f}")
-#ax[0].vlines(f.grid[wall_pos], 0, 3000, color="b", linestyle="-.")
-#ax[0].plot(f2.grid, f2.T, label=f"No Wall chi_st: {chi_st_ref:.2f}", linestyle="--")
-#ax[0].plot(f.mixture_fraction("H"), f.cp, label=f"cp")
-ax[0].plot(f.mixture_fraction("H"), f.density, label=f"density")
+#ax[0].plot(f.mixture_fraction("H"), f.density, label=f"with_wall")
+#ax[0].plot(f2.mixture_fraction("H"), f2.density, label=f"no_wall")
+ax[0].plot(f.mixture_fraction("H"), np.gradient(f.mixture_fracion("H"), f.mixture_fraction("H")), label=f"no_wall")
+
 
 ax[0].grid()
 ax[0].legend()
 ax[0].set_ylabel("T")
 ax[0].set_xlabel("<- fuel x ox->")
-# Fig 1 temp subplot 2
-ax[1].plot(f.mixture_fraction("H"), f.T, label=f"With Wall chi_st: {chi_st_new:.2f}")
-ax[1].plot(f2.mixture_fraction("H"), f2.T, label=f"No Wall chi_st: {chi_st_ref:.2f}", linestyle="--")
+# Fig 1  subplot 2
+ax[1].plot(f.mixture_fraction("H"), f.T, label=f"with_wall")
+ax[1].plot(f2.mixture_fraction("H"), f2.T, label=f"no_wall", linestyle="--")
+
 ax[1].grid()
 ax[1].legend()
 ax[1].set_ylabel("T")
 ax[1].set_xlabel("<- ox z fuel ->")
-# Fig1 enthalpy subplot 3
-ax[2].plot(f.mixture_fraction("H"), f.h, label=f"With Wall chi_st: {chi_st_new:.2f}")
-ax[2].plot(f2.mixture_fraction("H"), f2.h, label=f"No Wall chi_st: {chi_st_ref:.2f}", linestyle="--")
-##ax[2].scatter(f.mixture_fraction("H"), f.h)
-#f2.mixture_fraction("H"),
+# Fig1  subplot 3
+ax[2].plot(f.mixture_fraction("H"), f.h, label=f"with_wall")
+ax[2].plot(f2.mixture_fraction("H"), f2.h, label=f"no_wall", linestyle="--")
+
 ax[2].grid()
 ax[2].legend()
 ax[2].set_ylabel("h in  J/kg")
@@ -132,28 +109,23 @@ ax[2].set_xlabel("<- ox z fuel ->")
 
 
 
-# Fig 2 species subplot 1
 idx_H2 = f.gas.species_index("H2")
 idx_O2 = f.gas.species_index("O2")
 idx_OH = f.gas.species_index("OH")
 fig2, ax2 = plt.subplots(3, 1)
 
- #ax2[0].plot(f.mixture_fraction("H"), f.Y[idx_H2], label="H2 With Wall")
-ax2[0].plot(f.mixture_fraction("H"), f.Y[idx_H2], label="H2 With Wall")
- #ax2[0].plot(f2.mixture_fraction("H"), f2.Y[idx_H2], label="H2 No Wall")
-ax2[0].plot(f2.mixture_fraction("H"), f2.Y[idx_H2], label="H2 No Wall")
+# Fig 2 species subplot 1
+ax2[0].plot(f.mixture_fraction("H"), f.Y[idx_H2], label="with_wall")
+ax2[0].plot(f2.mixture_fraction("H"), f2.Y[idx_H2], label="no_wall")
 
 ax2[0].grid()
 ax2[0].legend()
 ax2[0].set_ylabel("H2")
 ax2[0].set_xlabel("<- fuel z ox ->")
 
-
 # Fig 2 species suplot 2
- #ax2[1].plot(f.mixture_fraction("h"), f.Y[idx_O2], label="O2 newbuild")
-ax2[1].plot(f.mixture_fraction("H"), f.Y[idx_O2], label="O2 newbuild")
- #ax2[1].plot(f2.mixture_fraction("H"), f2.Y[idx_O2], label="O2 No Wall")
-ax2[1].plot(f2.mixture_fraction("H"), f2.Y[idx_O2], label="O2 No Wall")
+ax2[1].plot(f.mixture_fraction("H"), f.Y[idx_O2], label="with_wall")
+ax2[1].plot(f2.mixture_fraction("H"), f2.Y[idx_O2], label="no_wall")
 
 ax2[1].grid()
 ax2[1].legend()
@@ -161,10 +133,8 @@ ax2[1].set_ylabel("O2")
 ax2[1].set_xlabel("<- fuel x ox ->")
 
 # Fig 2 species suplot 3
- #ax2[2].plot(f.mixture_fraction("h"), f.Y[idx_OH], label="OH newbuild")
-ax2[2].plot(f.mixture_fraction("H"), f.Y[idx_OH], label="OH newbuild")
- #ax2[2].plot(f2.mixture_fraction("H"), f2.Y[idx_OH], label="OH No Wall")
-ax2[2].plot(f2.mixture_fraction("H"), f2.Y[idx_OH], label="OH No Wall")
+ax2[2].plot(f.mixture_fraction("H"), f.Y[idx_OH], label="with_wall")
+ax2[2].plot(f2.mixture_fraction("H"), f2.Y[idx_OH], label="no_wall")
 
 ax2[2].grid()
 ax2[2].legend()

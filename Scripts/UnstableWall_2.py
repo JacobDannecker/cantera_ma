@@ -72,15 +72,18 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., fac
     z_wall = wall_params["Z_wall"]
     delta_T_ok = False
     failed = False
-    wall_params["factor"] = 100                                             
+    wall_params["factor"] = 100.0
+    max_factor = 1e25
     set_factor = False
-    while not delta_T_ok or failed:                                                             
-        try:                                                                
+    while not delta_T_ok and not failed:
+        try:
             if factor_last_working and not set_factor:
-                wall_params["factor"] = factor_last_working                        
+                wall_params["factor"] = factor_last_working
                 set_factor = True
             else:
-                wall_params["factor"] *= factor_increase                        
+                wall_params["factor"] = min(
+                    wall_params["factor"] * factor_increase, max_factor
+                )
             f.flame.set_non_adiabatic_wall(wall_params)                     
             f.solve(loglevel=loglevel, refine_grid=True)                           
             delta_T_wall = get_delta_T(f, wall_params)
@@ -96,7 +99,7 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., fac
             print(err)                                                      
             error_counter += 1
             print(f"Error count {error_counter}")
-            print(failed)
+            print("======================Had an exception in solve_with_wall")
             if error_counter <= 3:
                 # Reset factor and reduce factor_increase
                 wall_params["factor"] /= factor_increase                       
@@ -156,9 +159,9 @@ wall_params = {
 }                                                                           
  
 z_stoich = get_z_stoich(gas, wall_params, reaction_mechanism)
-file_path = f"Scripts/Data/test_new_3.h5"                     
-csv_path = f"Scripts/Data/test_new_3.csv"
-fig_path = f"Scripts/Data/test_new_3.png"
+file_path = f"Scripts/Data/test_new_6.h5"                     
+csv_path = f"Scripts/Data/test_new_6.csv"
+fig_path = f"Scripts/Data/test_new_6.png"
 # Names                                                                     
 name = "initial"                                                            
 names = [name,]                                                             
@@ -256,6 +259,7 @@ for i in range(n_max):
         try:
             factor_last_working = solve_with_wall(f, wall_params, name_fallback=names[-1],factor_last_working=factor_last_working, delta_T_max=1.0, loglevel=0)
         except BaseException as err:
+            print("Try wihtout last_working_factor.=============================================")
             factor_last_working = solve_with_wall(f, wall_params, name_fallback=names[-1],factor_last_working=False, delta_T_max=1.0, loglevel=0)
 
 
@@ -308,6 +312,11 @@ for i in range(n_max):
         'cpu_time': sum(f.jacobian_time_stats + f.eval_time_stats),
         'errors': error_count
     })
+    
+    
+    df = pd.DataFrame.from_records(data)
+    df.to_csv(csv_path)
+
 
     if error_count >= max_error_count:
         logger.warning(f'FAILURE! Stopping after {error_count} successive solver '
