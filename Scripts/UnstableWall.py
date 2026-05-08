@@ -79,11 +79,12 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., fac
         f.flame.set_non_adiabatic_wall(wall_params)                         
         print(f"Solving for z_wall: {z_wall} with factor = 1")                        
         if control_params:
-            print(f"{control_params["control_temperature"], control_params["left_control_point_temperature"], control_params["right_control_point_temperature"]}")
-            f.set_left_control_point(control_params["control_temperature"])
-            f.set_right_control_point(control_params["control_temperature"])
-            f.left_control_point_temperature = control_params["left_control_point_temperature"]
-            f.right_control_point_temperature = control_params["right_control_point_temperature"]
+            pass
+            #print(f"{control_params["control_temperature"], control_params["left_control_point_temperature"], control_params["right_control_point_temperature"]}")
+            #f.set_left_control_point(control_params["control_temperature"])
+            #f.set_right_control_point(control_params["control_temperature"])
+            #f.left_control_point_temperature = control_params["left_control_point_temperature"]
+            #f.right_control_point_temperature = control_params["right_control_point_temperature"]
 
 
         f.solve(loglevel=loglevel, fefine_grid=True)                               
@@ -94,11 +95,12 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., fac
         wall_params["factor"] = 100                                             
     while not delta_T_ok or failed:                                                             
         if control_params:
-            print(f"{control_params["control_temperature"], control_params["left_control_point_temperature"], control_params["right_control_point_temperature"]}")
-            f.set_left_control_point(control_params["control_temperature"])
-            f.set_right_control_point(control_params["control_temperature"])
-            f.left_control_point_temperature = control_params["left_control_point_temperature"]
-            f.right_control_point_temperature = control_params["right_control_point_temperature"]
+            pass
+            #print(f"{control_params["control_temperature"], control_params["left_control_point_temperature"], control_params["right_control_point_temperature"]}")
+            #f.set_left_control_point(control_params["control_temperature"])
+            #f.set_right_control_point(control_params["control_temperature"])
+            #f.left_control_point_temperature = control_params["left_control_point_temperature"]
+            #f.right_control_point_temperature = control_params["right_control_point_temperature"]
 
         try:                                                                
             wall_params["factor"] *= factor_increase                        
@@ -128,8 +130,8 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., fac
                 # Start from initial solution wit wall
                 # reset factor and factor_increase
                 print("Try with initial solution as ininital guess.")       
-                #f.set_initial_guess(data=file_path, group=name_fallback)         
-                f.from_array(name_fallback)
+                f.set_initial_guess(data=file_path, group=name_fallback)         
+                #f.from_array(name_fallback)
                 wall_params["factor"] = 10                                  
                 factor_increase = 2                                         
 
@@ -174,9 +176,9 @@ wall_params = {
 }                                                                           
  
 z_stoich = get_z_stoich(gas, wall_params, reaction_mechanism)
-file_path = f"Scripts/Data/test_5.h5"                     
-csv_path = f"Scripts/Data/test_5.csv"
-fig_path = f"Scripts/Data/test_5.png"
+file_path = f"Scripts/Data/test_8.h5"                     
+csv_path = f"Scripts/Data/test_8.csv"
+fig_path = f"Scripts/Data/test_8.png"
 # Names                                                                     
 name = "initial"                                                            
 names = [name,]                                                             
@@ -192,7 +194,7 @@ save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True)
 # Flame Continuation
 trapezoid = getattr(np, "trapezoid", None) or np.trapz
 # Maximum number of steps to take
-n_max = 15 
+n_max = 100
 
 # Relative temperature defining control point locations, with 1 being the peak
 # temperature and 0 being the inlet temperature. Lower values tend to avoid solver
@@ -220,7 +222,7 @@ f.two_point_control_enabled = True
 # Prevent two point control from finding solutions with negative inlet velocities
 f.flame.set_bounds(spread_rate=(-1e-5, 1e20))
 
-#f.max_time_step_count = 100
+f.max_time_step_count = 500
 T_max = max(f.T)
 a_max = strain_rate = f.strain_rate('max')
 data = []  # integral output quantities for each step
@@ -274,7 +276,7 @@ for i in range(n_max):
         break
 
     try:
-        solve_with_wall(f, wall_params, name_fallback=backup_state, delta_T_max=1.0, loglevel=0, control_params=control_params)
+        solve_with_wall(f, wall_params, name_fallback=names[-1], delta_T_max=1.0, loglevel=0, control_params=control_params)
 
         #print("After solve with wall")
         #if abs(max(f.T) - T_max) < 0.8 * target_delta_T_max:
@@ -293,7 +295,8 @@ for i in range(n_max):
 
         # Restore the previous solution and try a smaller temperature increment for the
         # next iteration
-        f.from_array(backup_state)
+        f.restore(file_path, group=name[-1])
+        #f.from_array(backup_state)
         temperature_increment = 0.7 * temperature_increment
         error_count += 1
         logger.warning(f"Solver did not converge on iteration {i}. Trying again with "
