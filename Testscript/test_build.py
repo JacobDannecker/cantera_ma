@@ -11,17 +11,17 @@ width = 18e-3
 f = ct.CounterflowDiffusionFlame(gas, width=width)
 f2 = ct.CounterflowDiffusionFlame(gas, width=width)
 f.P = 1.e5  
-f.fuel_inlet.mdot = 3.5  
+f.fuel_inlet.mdot = 0.5  
 f.fuel_inlet.X = "H2:1"
 f.fuel_inlet.T = 300 
-f.oxidizer_inlet.mdot = 3.5 
+f.oxidizer_inlet.mdot = 3.0 
 f.oxidizer_inlet.X = "O2:1"
 f.oxidizer_inlet.T = 300 
 z_stoich = 0.111
 
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 file_name = "Testscript/Data/test.h5"
-#f.set_initial_guess(data=file_name, group="no_wall") 
+f.set_initial_guess(data=file_name, group="no_wall") 
 # Set up wall 
 params = {
     'Z_wall': 0.8,
@@ -34,20 +34,44 @@ params = {
 }
 f.flame.set_non_adiabatic_wall(params)
 f.transport_model = "unity-Lewis-number"
-#f.two_point_control_enabled = True
-#f.set_left_control_point(800)
-#f.set_right_control_point(800)
-#f.left_control_point_temperature = 700 
-#f.right_control_point_temperature = 700 
+f.two_point_control_enabled = True
+f.set_left_control_point(2700)
+f.set_right_control_point(2700)
+print(f.left_control_point_temperature)
+print(f.right_control_point_temperature)
+f.left_control_point_temperature = 2600 
+f.right_control_point_temperature = 2600 
+f.max_time_step_count = 500
 start = time.time()
 f.solve(loglevel=1, refine_grid=True)
 end = time.time()
 print(f.fuel_inlet.mdot, f.oxidizer_inlet.mdot)
 print(end - start)
+print(np.max(f.T))
 print(f.enthalpy_mass)
 print(f.transport_model)
-f.save(file_name, name="0800", overwrite=True)
-f2.restore(file_name, name="0800")
+f.save(file_name, name="tp_1", overwrite=True)
+
+params = {
+    'Z_wall': 0.8,
+    'T_wall': 300,
+    'factor': 1e10,
+    'mix_frac': 'Bilger',
+    'fuel': 'H2',
+    'oxidizer': 'O2',
+   'basis': 'mass'
+}
+f.flame.set_non_adiabatic_wall(params)
+f.solve(loglevel=1, refine_grid=True)
+print(f.right_control_point_temperature)
+print(f.left_control_point_temperature)
+print(np.max(f.T))
+f.save(file_name, name="tp_2", overwrite=True)
+
+
+
+
+f2.restore(file_name, name="tp_1")
 
 
 def chi_stoich(f, z_stoich):
