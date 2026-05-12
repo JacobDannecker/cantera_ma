@@ -3,14 +3,10 @@ import cantera as ct
 import pandas as pd
 import h5py
 from matplotlib import pyplot as plt
+from scipy import special
 
-file_path = f"Scripts/Data/test_new_7.h5"                                             
-csv_path = f"Scripts/Data/test_new_7.csv"
-df = pd.read_csv(csv_path)
-plt.figure()
-plt.plot(df.strain_rate, df.T_max)
-plt.xlabel('Maximum Axial Velocity Gradient [1/s]')
-plt.ylabel('Maximum Temperature [K]')
+file_path = f"Scripts/Data/test_new_6.h5"                                             
+csv_path = f"Scripts/Data/test_new_6.csv"
 
 reaction_mechanism = "h2o2.yaml"                                                
 gas = ct.Solution(reaction_mechanism)                                           
@@ -39,16 +35,23 @@ fig2.suptitle("H2/O2")
 idx_H2 = f.gas.species_index("H2")                                              
 idx_O2 = f.gas.species_index("O2")                                              
 idx_OH = f.gas.species_index("OH")                                              
-
 idx_H = f.gas.species_index("H")                                              
 idx_O = f.gas.species_index("O")                                              
 
 h5_file = h5py.File(file_path, "r")                                          
 names = [str(name) for name in h5_file.keys()]
 
+species_idx = f.gas.species_index("OH") 
+species_name = "OH"
+species = []
 for name in names:                                                              
     f.restore(file_path, name=name)                                             
     label = name                                                                
+
+    idx_T_max = np.abs(f.T - np.max(f.T)).argmin()
+    species_T_max = f.Y[species_idx][:][idx_T_max]
+    species.append(species_T_max)
+
     # Subplot 1 Temperature                                                     
     ax[0].plot(f.mixture_fraction("H"), f.T, label=label)                       
     # Subplot 2  enthalpy                                                       
@@ -80,7 +83,22 @@ ax2[1].set_ylabel("O2")
 ax2[2].set_ylabel("OH")                                                         
 ax2[3].set_ylabel("O")                                                         
 ax2[4].set_ylabel("H")                                                         
-                                                                                
+
+df = pd.read_csv(csv_path)
+fig3, ax3 = plt.subplots(1, 2)
+ax3[0].plot(df.strain_rate, df.T_max)
+species = np.array(species)
+ax3[1].plot(np.sort(species[1:]), df.T_max)
+
+ax3[0].set_xlabel('Maximum Axial Velocity Gradient [1/s]')
+ax3[0].set_ylabel('Maximum Temperature [K]')
+
+ax3[1].set_xlabel(species_name + " at Tmax")
+ax3[1].set_ylabel('Maximum Temperature [K]')
+
+
+
+
 plt.tight_layout()                                                              
 plt.show()                                                                      
 
