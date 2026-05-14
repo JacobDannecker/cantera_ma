@@ -106,8 +106,9 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., fac
                 if factor_increase > 1.2:                                       
                     factor_increase *= 0.9                                      
             else:
-                print("No solution found. error_counter: {error_counter}")
+                print("No solution found. Leaving solve_with_wall()")
                 failed = True
+                raise ct.CanteraError("Failed solve_with_wall()")
 
            # if  error_counter == 4:
            #     # Start from initial solution wit wall
@@ -159,9 +160,9 @@ wall_params = {
 }                                                                           
  
 z_stoich = get_z_stoich(gas, wall_params, reaction_mechanism)
-file_path = f"Scripts/Data/z_wall_060.h5"                     
-csv_path = f"Scripts/Data/z_wall_060.csv"
-fig_path = f"Scripts/Data/z_wall_060.png"
+file_path = f"Scripts/Data/z_wall_050.h5"                     
+csv_path = f"Scripts/Data/z_wall_050.csv"
+fig_path = f"Scripts/Data/z_wall_050.png"
 # Names                                                                     
 name = "initial"                                                            
 names = [name,]                                                             
@@ -194,7 +195,7 @@ max_increment = 100
 target_delta_T_max = 20 
 
 # Stop after this many successive errors
-max_error_count = 3
+max_error_count = 5
 error_count = 0
 
 # Stop after any failure if the strain rate has dropped to this fraction of the maximum
@@ -281,7 +282,8 @@ for i in range(n_max):
         # Restore the previous solution and try a smaller temperature increment for the
         # next iteration
         factor_last_working = 100
-        f.restore(file_path, group=name[-1])
+        f.restore(file_path, name=names[-1])
+        print(f"Restor solution: {names[-1]} ")
         #f.from_array(backup_state)
         temperature_increment = 0.5 * temperature_increment
         error_count += 1

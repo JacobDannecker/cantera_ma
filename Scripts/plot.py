@@ -5,8 +5,8 @@ import h5py
 from matplotlib import pyplot as plt
 from scipy import special
 
-file_path = f"Scripts/Data/test_new_6.h5"                                             
-csv_path = f"Scripts/Data/test_new_6.csv"
+file_path = f"Scripts/Data/z090.h5"                                             
+csv_path = f"Scripts/Data/z090.csv"
 
 reaction_mechanism = "h2o2.yaml"                                                
 gas = ct.Solution(reaction_mechanism)                                           
@@ -37,7 +37,7 @@ idx_O2 = f.gas.species_index("O2")
 idx_OH = f.gas.species_index("OH")                                              
 idx_H = f.gas.species_index("H")                                              
 idx_O = f.gas.species_index("O")                                              
-
+print(idx_OH)
 h5_file = h5py.File(file_path, "r")                                          
 names = [str(name) for name in h5_file.keys()]
 
@@ -50,6 +50,7 @@ for name in names:
 
     idx_T_max = np.abs(f.T - np.max(f.T)).argmin()
     species_T_max = f.Y[species_idx][:][idx_T_max]
+    print(f.Y.shape)
     species.append(species_T_max)
 
     # Subplot 1 Temperature                                                     
