@@ -28,7 +28,7 @@ z_stoich = 0.111
 #f.set_refine_criteria(ratio=2.0, slope=0.5, curve=0.5, prune=0.03)
 file_name = "Scripts/Data/test_build.h5"
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
-f.set_initial_guess(data=file_name, group="no_wall") 
+f.set_initial_guess(data=file_name, group="0800") 
 # Set up wall 
 wall_params = {
     'Z_wall': 0.8,
@@ -41,9 +41,9 @@ wall_params = {
 }
 f.transport_model = "unity-Lewis-number"
 
-f.max_time_step_count = 1000
+f.max_time_step_count = 500 
 start = time.time()
-delta_T_max = 0.02 
+delta_T_max = 1. 
 delta_T_ok = False
 while not delta_T_ok:
     try:
@@ -63,7 +63,7 @@ while not delta_T_ok:
 #f.solve(loglevel=1, refine_grid=True)
 end = time.time()
 print(end - start)
-f.save(file_name, name="0800", overwrite=True)
+f.save(file_name, name="0700", overwrite=True)
 
 f2.restore(file_name, name="0800_2")
 

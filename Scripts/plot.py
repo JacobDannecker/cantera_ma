@@ -5,8 +5,12 @@ import h5py
 from matplotlib import pyplot as plt
 from scipy import special
 
-file_path = f"Scripts/Data/z090.h5"                                             
-csv_path = f"Scripts/Data/z090.csv"
+file_path = f"Scripts/Data/z070.h5"                                             
+csv_path = f"Scripts/Data/z070.csv"
+
+#file_path = f"Scripts/Data/z090.h5"                                             
+#csv_path = f"Scripts/Data/z090.csv"
+
 
 reaction_mechanism = "h2o2.yaml"                                                
 gas = ct.Solution(reaction_mechanism)                                           
@@ -25,11 +29,11 @@ f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
 
 
-fig, ax = plt.subplots(3, 1)                                                    
-fig.suptitle("H2/O2")                                                           
+fig, ax = plt.subplots(2, 1)                                                    
+fig.suptitle("H2/O2 z_wall 0.9")                                                           
                                                                                 
 fig2, ax2 = plt.subplots(5, 1)                                                  
-fig2.suptitle("H2/O2")                                                          
+fig2.suptitle("H2/O2 z_wall 0.9")                                                          
                                                                                 
                                                                                 
 idx_H2 = f.gas.species_index("H2")                                              
@@ -37,7 +41,6 @@ idx_O2 = f.gas.species_index("O2")
 idx_OH = f.gas.species_index("OH")                                              
 idx_H = f.gas.species_index("H")                                              
 idx_O = f.gas.species_index("O")                                              
-print(idx_OH)
 h5_file = h5py.File(file_path, "r")                                          
 names = [str(name) for name in h5_file.keys()]
 
@@ -50,14 +53,13 @@ for name in names:
 
     idx_T_max = np.abs(f.T - np.max(f.T)).argmin()
     species_T_max = f.Y[species_idx][:][idx_T_max]
-    print(f.Y.shape)
     species.append(species_T_max)
 
     # Subplot 1 Temperature                                                     
     ax[0].plot(f.mixture_fraction("H"), f.T, label=label)                       
     # Subplot 2  enthalpy                                                       
     ax[1].plot(f.mixture_fraction("H"), f.h, label=label)                       
-    ax[2].plot(f.mixture_fraction("H"), f.equivalence_ratio, label=label)                       
+#    ax[2].plot(f.mixture_fraction("H"), f.equivalence_ratio, label=label)                       
 
     # Sublots species                                                           
     ax2[0].plot(f.mixture_fraction("H"), f.Y[idx_H2], label=label)              

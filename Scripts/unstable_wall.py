@@ -185,10 +185,10 @@ n_max = 500
 # failures early on, while using higher values on the unstable branch tend to help
 # with finding solutions where the peak temperature is very low.
 initial_spacing = 0.9
-unstable_spacing = 0.95
+unstable_spacing =  0.95
 
 # Amount to adjust temperature at the control point each step [K]
-temperature_increment = 20.0
+temperature_increment = 50.0
 max_increment = 100 
 
 # Try to keep T_max from changing more than this much each step [K]

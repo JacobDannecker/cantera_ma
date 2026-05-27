@@ -26,15 +26,11 @@ def readRawData(file, quantity_ident="T", idx_progress_var=3, z_spec=0.9, n=1000
         progress_var = np.array(h5_file[run]["flame/Y"]).T[idx_progress_var]
 
         idx_z = np.abs(z - z_spec).argmin()
-        print(z[idx_z])
-        print(quantity[idx_z])
         xnew = np.linspace(0, np.max(grid), num=n)
         z = np.interp(xnew, grid, z)
         idx_z = np.abs(z - z_spec).argmin()
 
         quantity = np.interp(xnew, grid, quantity)
-        print(z[idx_z])
-        print(quantity[idx_z])
         progress_var = np.interp(xnew, grid, progress_var)
 
         idx_z = np.abs(z - z_spec).argmin()
@@ -88,7 +84,7 @@ for file in file_list:
     ax.plot(x, y, label="z_wall = " + str(z_wall))
     ax.scatter(x, y, marker="x")
 fig.suptitle("z = " + str(z_spec))
-ax.set_xlabel("progress_var OH")
+ax.set_xlabel("OH")
 ax.set_ylabel("T")
 ax.legend()
 plt.show()
