@@ -10,11 +10,34 @@ def get_delta_T(f, wall_params):
     delta_T_wall =  f.T[idx_wall] - wall_params["T_wall"] 
     return delta_T_wall
 
+def clustered_grid(L, n, cluster=0.32, beta=3.0):
+    s = np.linspace(0, 1, n)
+    f = np.tanh(beta * (s - cluster))
+    f0 = np.tanh(-beta * cluster)
+    f1 = np.tanh(beta * (1 - cluster))
+    return L * (f - f0) / (f1 - f0)
+
+def clustered_grid(L, n, cluster_frac=0.32, beta_left=1.5, beta_right=2.6):     
+   s = np.linspace(0, 1, n)                                                    
+   x = np.empty(n)                                                             
+   # Left side: arctanh clusters points near s=cluster_frac                    
+   mask = s <= cluster_frac                                                    
+   z = s[mask] / cluster_frac                                                  
+   y = 1 - np.arctanh(np.tanh(beta_left) * (1 - z)) / beta_left                
+   x[mask] = cluster_frac * L * y                                              
+   # Right side: arctanh clusters points near s=cluster_frac                   
+   z = (s[~mask] - cluster_frac) / (1 - cluster_frac)                          
+   y = np.arctanh(np.tanh(beta_right) * z) / beta_right                        
+   x[~mask] = cluster_frac * L + (1 - cluster_frac) * L * y                    
+   return x      
+
 reaction_mechanism = "h2o2.yaml"
 gas = ct.Solution(reaction_mechanism)
 width = 18e-3  
-grid = np.linspace(0, width, 200)
-f = ct.CounterflowDiffusionFlame(gas, width=width)
+grid = clustered_grid(18e-3, 350, cluster_frac=0.32, beta_left=1.5, beta_right=2.6) 
+grid = clustered_grid(18e-3, 300, cluster_frac=0.32, beta_left=3, beta_right=3) 
+
+f = ct.CounterflowDiffusionFlame(gas, grid=grid)
 f2 = ct.CounterflowDiffusionFlame(gas, width=width)
 f.P = 1.e5  
 f.fuel_inlet.mdot = 0.5  
@@ -28,7 +51,7 @@ z_stoich = 0.111
 #f.set_refine_criteria(ratio=2.0, slope=0.5, curve=0.5, prune=0.03)
 file_name = "Scripts/Data/test_build.h5"
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
-f.set_initial_guess(data=file_name, group="no_wall") 
+#f.set_initial_guess(data=file_name, group="no_wall") 
 # Set up wall 
 wall_params = {
     'Z_wall': 0.8,
@@ -38,12 +61,13 @@ wall_params = {
     'fuel': 'H2',
     'oxidizer': 'O2',
     'basis': 'mass'
-}
+    }
 f.transport_model = "unity-Lewis-number"
+
 
 f.max_time_step_count = 1000
 start = time.time()
-delta_T_max = 0.02 
+delta_T_max = 1.0 
 delta_T_ok = False
 while not delta_T_ok:
     try:
@@ -98,8 +122,8 @@ fig.suptitle(" H2/O2")
 #ax[0].plot(f.mixture_fraction("H"), np.gradient(f.mixture_fracion("H"), f.mixture_fraction("H")), label=f"no_wall")
 #ax[0].scatter(f.mixture_fraction("H"), f.grid, label=f"with_wall")
 #ax[0].scatter(f2.mixture_fraction("H"), f2.grid, label=f"no_wall")
-ax[0].scatter(f.grid, f.grid, label=f"with_wall")
-ax[0].scatter(f2.grid, f2.grid, label=f"no_wall")
+ax[0].scatter(f.grid, np.zeros(f.grid.shape[0]), label=f"with_wall")
+ax[0].scatter(f2.grid, np.ones(f2.grid.shape[0]), label=f"no_wall")
 
 
 ax[0].grid()
@@ -158,4 +182,5 @@ ax2[2].legend()
 ax2[2].set_ylabel("OH")
 ax2[2].set_xlabel("<- fuel x ox ->")
 
+print(f2.grid)
 plt.show()
