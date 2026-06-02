@@ -87,6 +87,28 @@ public:
         m_gridmin = gridmin;
     }
 
+    //! Enable or disable enthalpy-based grid refinement.
+    void enableEnthalpyRefinement(bool enable) {
+        m_enthalpy_enabled = enable;
+    }
+
+    //! Returns whether enthalpy-based grid refinement is enabled.
+    bool enthalpyRefinementEnabled() const {
+        return m_enthalpy_enabled;
+    }
+
+    //! Set the curvature criterion for enthalpy refinement.
+    //! @param curve  Maximum fractional change in the derivative of enthalpy
+    //!     between adjacent grid points (same semantics as the 'curve' parameter).
+    void setEnthalpyCurve(double curve) {
+        m_enthalpy_curve = curve;
+    }
+
+    //! Returns the enthalpy curvature criterion.
+    double enthalpyCurve() const {
+        return m_enthalpy_curve;
+    }
+
     //! Returns the the minimum allowable spacing between adjacent
     //! grid points [m].
     double gridMin() const {
@@ -195,6 +217,13 @@ protected:
     double m_slope = 0.8; //!< function change refinement criteria
     double m_curve = 0.8; //!< function slope refinement criteria
     double m_prune = -0.001; //!< pruning refinement criteria
+    //! @}
+
+    //! @name Enthalpy refinement criteria
+    //! Whether enthalpy-based grid refinement is enabled
+    bool m_enthalpy_enabled = false;
+    //! Curvature criterion for enthalpy refinement
+    double m_enthalpy_curve = 0.8;
     //! @}
 
     //! Threshold for ignoring small changes around a constant during refinement.

@@ -740,6 +740,28 @@ vector<double> Sim1D::getRefineCriteria(int dom)
    }
 }
 
+void Sim1D::setEnthalpyRefinement(int dom, bool enable)
+{
+    if (dom >= 0) {
+        domain(dom).refiner().enableEnthalpyRefinement(enable);
+    } else {
+        for (size_t n = 0; n < nDomains(); n++) {
+            domain(n).refiner().enableEnthalpyRefinement(enable);
+        }
+    }
+}
+
+void Sim1D::setEnthalpyCurve(int dom, double curve)
+{
+    if (dom >= 0) {
+        domain(dom).refiner().setEnthalpyCurve(curve);
+    } else {
+        for (size_t n = 0; n < nDomains(); n++) {
+            domain(n).refiner().setEnthalpyCurve(curve);
+        }
+    }
+}
+
 void Sim1D::setGridMin(int dom, double gridmin)
 {
     if (dom >= 0) {

@@ -147,6 +147,53 @@ int Refiner::analyze(size_t n, span<const double> z, span<const double> x)
         }
     }
 
+    // Refine based on enthalpy curvature (for unity-Lewis-number flames)
+    if (m_enthalpy_enabled) {
+        Flow1D* fflame = dynamic_cast<Flow1D*>(m_domain);
+        if (fflame) {
+            ThermoPhase& thermo = fflame->phase();
+            size_t nsp = thermo.nSpecies();
+            vector<double> h(n);
+            vector<double> y_work(nsp);
+            for (size_t j = 0; j < n; j++) {
+                double Tj = value(x, c_offset_T, j);
+                for (size_t k = 0; k < nsp; k++) {
+                    y_work[k] = value(x, c_offset_Y + k, j);
+                }
+                thermo.setTemperature(Tj);
+                thermo.setMassFractions(y_work);
+                h[j] = thermo.enthalpy_mass();
+            }
+
+            // slope of enthalpy
+            vector<double> h_slope(n-1);
+            for (size_t j = 0; j < n-1; j++) {
+                h_slope[j] = (h[j+1] - h[j]) / dz[j];
+            }
+
+            double hSlopeMin = *min_element(h_slope.begin(), h_slope.end());
+            double hSlopeMax = *max_element(h_slope.begin(), h_slope.end());
+            double hSlopeMagnitude = max(fabs(hSlopeMax), fabs(hSlopeMin));
+
+            if (hSlopeMax - hSlopeMin > m_min_range * hSlopeMagnitude) {
+                double max_change = m_enthalpy_curve * (hSlopeMax - hSlopeMin);
+                for (size_t j = 0; j < n-2; j++) {
+                    double ratio = fabs(h_slope[j+1] - h_slope[j])
+                                   / (max_change + m_thresh/dz[j]);
+                    if (ratio > 1.0 && dz[j] >= 2*m_gridmin && dz[j+1] >= 2*m_gridmin) {
+                        m_componentNames.insert("enthalpy");
+                        m_insertPts.insert(j);
+                        m_insertPts.insert(j+1);
+                    }
+                    // Protect enthalpy-relevant points from pruning by other components
+                    if (ratio >= m_prune) {
+                        m_keep[j+1] = KEEP;
+                    }
+                }
+            }
+        }
+    }
+
     // Refine based on properties of the grid itself
     for (size_t j = 1; j < n-1; j++) {
         // Add a new point if the ratio with left interval is too large.

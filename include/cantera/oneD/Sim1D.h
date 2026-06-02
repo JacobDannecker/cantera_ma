@@ -276,6 +276,25 @@ public:
     vector<double> getRefineCriteria(int dom);
 
     /**
+     * Enable or disable enthalpy-based grid refinement for a domain.
+     * Under the unity-Lewis-number assumption, the mass enthalpy varies
+     * piecewise-linearly with mixture fraction. Enabling this refinement
+     * monitors enthalpy curvature and adds grid points where the profile
+     * deviates from linearity, while protecting those points from pruning.
+     * @param dom  Domain index. If dom == -1, applies to all domains.
+     * @param enable  True to enable enthalpy refinement.
+     */
+    void setEnthalpyRefinement(int dom, bool enable);
+
+    /**
+     * Set the curvature criterion for enthalpy refinement.
+     * @param dom  Domain index. If dom == -1, applies to all domains.
+     * @param curve  Maximum fractional change in the derivative of enthalpy
+     *     between adjacent grid points (same semantics as the 'curve' parameter).
+     */
+    void setEnthalpyCurve(int dom, double curve);
+
+    /**
      * Set the maximum number of grid points in the domain. If dom >= 0,
      * then the settings apply only to the specified domain. If dom < 0,
      * the settings are applied to each domain.  @see Refiner::setMaxPoints.

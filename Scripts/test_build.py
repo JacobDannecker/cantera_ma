@@ -28,8 +28,8 @@ def clustered_grid(L, n, cluster_frac=0.32, beta_left=1.5, beta_right=2.6):
 reaction_mechanism = "h2o2.yaml"
 gas = ct.Solution(reaction_mechanism)
 width = 18e-3  
-grid = np.linspace(0, width, 200)
-f = ct.CounterflowDiffusionFlame(gas, grid=grid)
+grid = np.linspace(0, width, 100)
+f = ct.CounterflowDiffusionFlame(gas, width=width)
 gas = ct.Solution("h2o2.yaml")
 f2 = ct.CounterflowDiffusionFlame(gas, width=width)
 f.P = 1.e5  
@@ -43,13 +43,12 @@ z_stoich = 0.111
 
 #f.set_refine_criteria(ratio=2.0, slope=0.5, curve=0.5, prune=0.03)
 file_name = "Scripts/Data/enthalpy.h5"
-f.set_refine_criteria(ratio=2.0, slope=0.5, curve=0.5, prune=0.03)
-f.set_initial_guess(data=file_name, group="old") 
+#f.set_refine_criteria(ratio=2.0, slope=0.5, curve=0.5, prune=0)
 # Set up wall 
 wall_params = {
     'Z_wall': 0.8,
     'T_wall': 300,
-    'factor': 1e10,
+    'factor': 1e12,
     'mix_frac': 'Bilger',
     'fuel': 'H2',
     'oxidizer': 'O2',
@@ -66,8 +65,14 @@ f.transport_model = "unity-Lewis-number"
 #                            T=(3e-6, 0.),
 #                            Y=(7e-8, 0.))
 #
-f.max_time_step_count = 500 
-delta_T_max = 0.1 
+
+f.set_refine_criteria(ratio=3, slope=0.5, curve=0.5, prune=0.0,
+                      enthalpy=True, enthalpy_curve=0.1)
+
+f.set_initial_guess(data=file_name, group="initial") 
+
+f.max_time_step_count = 1000 
+delta_T_max = 1.0 
 delta_T_ok = False
 while not delta_T_ok:
     try:
@@ -112,7 +117,7 @@ idx_H2 = f.gas.species_index("H2")
 idx_O2 = f.gas.species_index("O2")
 
 # Fig 1 subplot 1
-fig, ax = plt.subplots(3, 1)
+fig, ax = plt.subplots(4, 1)
 fig.suptitle(" H2/O2") 
 
 #ax[0].plot(f.mixture_fraction("H"), f.density, label=f"new")
@@ -143,6 +148,15 @@ ax[2].grid()
 ax[2].legend()
 ax[2].set_ylabel("h in  J/kg")
 ax[2].set_xlabel("<- ox z fuel ->")
+
+# Fig1  subplot 3
+ax[3].plot(f.grid, f.enthalpy_mass, label=f"new", marker="x")
+ax[3].plot(f2.grid, f2.h, label=f"old", linestyle="--", marker="x")
+ax[3].grid()
+ax[3].legend()
+ax[3].set_ylabel("h in  J/kg")
+ax[3].set_xlabel("grid")
+
 
 
 idx_H2 = f.gas.species_index("H2")
