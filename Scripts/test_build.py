@@ -10,12 +10,6 @@ def get_delta_T(f, wall_params):
     delta_T_wall =  f.T[idx_wall] - wall_params["T_wall"] 
     return delta_T_wall
 
-def clustered_grid(L, n, cluster=0.32, beta=3.0):
-    s = np.linspace(0, 1, n)
-    f = np.tanh(beta * (s - cluster))
-    f0 = np.tanh(-beta * cluster)
-    f1 = np.tanh(beta * (1 - cluster))
-    return L * (f - f0) / (f1 - f0)
 
 def clustered_grid(L, n, cluster_frac=0.32, beta_left=1.5, beta_right=2.6):     
    s = np.linspace(0, 1, n)                                                    
@@ -34,10 +28,8 @@ def clustered_grid(L, n, cluster_frac=0.32, beta_left=1.5, beta_right=2.6):
 reaction_mechanism = "h2o2.yaml"
 gas = ct.Solution(reaction_mechanism)
 width = 18e-3  
-grid = clustered_grid(18e-3, 350, cluster_frac=0.32, beta_left=1.5, beta_right=2.6) 
-grid = clustered_grid(18e-3, 300, cluster_frac=0.32, beta_left=3, beta_right=3) 
-
-f = ct.CounterflowDiffusionFlame(gas, grid=grid)
+f = ct.CounterflowDiffusionFlame(gas, width=width)
+gas = ct.Solution("h2o2.yaml")
 f2 = ct.CounterflowDiffusionFlame(gas, width=width)
 f.P = 1.e5  
 f.fuel_inlet.mdot = 0.5  
@@ -50,8 +42,8 @@ z_stoich = 0.111
 
 #f.set_refine_criteria(ratio=2.0, slope=0.5, curve=0.5, prune=0.03)
 file_name = "Scripts/Data/test_build.h5"
-f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
-#f.set_initial_guess(data=file_name, group="no_wall") 
+f.set_refine_criteria(ratio=2.0, slope=0.5, curve=0.5, prune=0.03)
+f.set_initial_guess(data=file_name, group="no_wall") 
 # Set up wall 
 wall_params = {
     'Z_wall': 0.8,
@@ -64,15 +56,24 @@ wall_params = {
     }
 f.transport_model = "unity-Lewis-number"
 
+#tol_ss= [1.0e-5, 1.0e-9]# [rtol atol] for steady-state problem
+#tol_ts= [1.0e-5, 1.0e-9]# [rtol atol] for time stepping
+#f.flame.set_steady_tolerances(default=tol_ss)
+#f.flame.set_transient_tolerances(default=tol_ts)
+#f.enthalpy_refinement = True
+
+f.flame.set_steady_tolerances(default=(5e-3, 5e-3),
+                            T=(3e-6, 0.),
+                            Y=(7e-8, 0.))
 
 f.max_time_step_count = 1000
 start = time.time()
-delta_T_max = 1.0 
+delta_T_max = 0.001 
 delta_T_ok = False
 while not delta_T_ok:
     try:
         f.flame.set_non_adiabatic_wall(wall_params)                     
-        f.solve(loglevel=1, refine_grid=True)                           
+        f.solve(loglevel=1, refine_grid=True, auto=True)                           
         delta_T_wall = get_delta_T(f, wall_params)
         wall_params["factor"] *= 2
         if delta_T_wall < delta_T_max:
@@ -139,15 +140,13 @@ ax[1].legend()
 ax[1].set_ylabel("T")
 ax[1].set_xlabel("<- ox z fuel ->")
 # Fig1  subplot 3
-ax[2].plot(f.mixture_fraction("H"), f.h, label=f"with_wall")
+ax[2].plot(f.mixture_fraction("H"), f.enthalpy_mass, label=f"with_wall")
 ax[2].plot(f2.mixture_fraction("H"), f2.h, label=f"no_wall", linestyle="--")
 
 ax[2].grid()
 ax[2].legend()
 ax[2].set_ylabel("h in  J/kg")
 ax[2].set_xlabel("<- ox z fuel ->")
-
-
 
 
 idx_H2 = f.gas.species_index("H2")
@@ -182,5 +181,5 @@ ax2[2].legend()
 ax2[2].set_ylabel("OH")
 ax2[2].set_xlabel("<- fuel x ox ->")
 
-print(f2.grid)
+
 plt.show()

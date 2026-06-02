@@ -5,11 +5,8 @@ import h5py
 from matplotlib import pyplot as plt
 from scipy import special
 
-file_path = f"Scripts/Data/z070.h5"                                             
-csv_path = f"Scripts/Data/z070.csv"
-
-#file_path = f"Scripts/Data/z090.h5"                                             
-#csv_path = f"Scripts/Data/z090.csv"
+file_path = f"Scripts/Data/stabel_050.h5"                                             
+#csv_path = f"Scripts/Data/stable_050.csv"
 
 
 reaction_mechanism = "h2o2.yaml"                                                
@@ -22,8 +19,8 @@ f.fuel_inlet.mdot = 0.5
 f.oxidizer_inlet.mdot = 3.0                                                     
 f.fuel_inlet.X = "H2:1"                                                         
 f.oxidizer_inlet.X = "O2:1"                                                     
-f.fuel_inlet.T = 500                                                            
-f.oxidizer_inlet.T = 500                                                        
+f.fuel_inlet.T = 300                                                            
+f.oxidizer_inlet.T = 300                                                        
 f.transport_model = "unity-Lewis-number"                                        
 f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
@@ -42,8 +39,8 @@ idx_OH = f.gas.species_index("OH")
 idx_H = f.gas.species_index("H")                                              
 idx_O = f.gas.species_index("O")                                              
 h5_file = h5py.File(file_path, "r")                                          
-names = [str(name) for name in h5_file.keys()]
-
+names = ["extinction/" + str(name)  for name in h5_file["extinction"].keys()][10]
+print(names)
 species_idx = f.gas.species_index("OH") 
 species_name = "OH"
 species = []
@@ -87,18 +84,18 @@ ax2[2].set_ylabel("OH")
 ax2[3].set_ylabel("O")                                                         
 ax2[4].set_ylabel("H")                                                         
 
-df = pd.read_csv(csv_path)
-fig3, ax3 = plt.subplots(1, 2)
-ax3[0].plot(df.strain_rate, df.T_max)
-species = np.array(species)
-ax3[1].plot(np.sort(species[1:]), df.T_max)
-
-ax3[0].set_xlabel('Maximum Axial Velocity Gradient [1/s]')
-ax3[0].set_ylabel('Maximum Temperature [K]')
-
-ax3[1].set_xlabel(species_name + " at Tmax")
-ax3[1].set_ylabel('Maximum Temperature [K]')
-
+#df = pd.read_csv(csv_path)
+#fig3, ax3 = plt.subplots(1, 2)
+#ax3[0].plot(df.strain_rate, df.T_max)
+#species = np.array(species)
+#ax3[1].plot(np.sort(species[1:]), df.T_max)
+#
+#ax3[0].set_xlabel('Maximum Axial Velocity Gradient [1/s]')
+#ax3[0].set_ylabel('Maximum Temperature [K]')
+#
+#ax3[1].set_xlabel(species_name + " at Tmax")
+#ax3[1].set_ylabel('Maximum Temperature [K]')
+#
 
 
 

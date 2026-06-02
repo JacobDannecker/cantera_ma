@@ -167,9 +167,9 @@ f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
 # Wall                                                                      
 wall_params = {                                                             
-'Z_wall': 0.5,                                                                
+'Z_wall': 0.8,                                                                
 'T_wall': 300.0,                                                            
-'factor': 1,                                                                
+'factor': 10000,                                                                
 'mix_frac': 'Bilger',                                                       
 'fuel': 'H2',                                                               
 'oxidizer': 'O2',                                                           
@@ -279,7 +279,6 @@ while True:
         # to the output file and break the loop
         name = f"extinction/{n:04d}" 
         names.append(name)
-        file_name, entry = names(f"extinction/{n:04d}")
         save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True)
 
         print('Flame extinguished at alpha = {0:8.4F}.'.format(alpha[-1]),
