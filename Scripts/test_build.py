@@ -60,7 +60,6 @@ f.transport_model = "unity-Lewis-number"
 #tol_ts= [1.0e-5, 1.0e-9]# [rtol atol] for time stepping
 #f.flame.set_steady_tolerances(default=tol_ss)
 #f.flame.set_transient_tolerances(default=tol_ts)
-#f.enthalpy_refinement = True
 
 f.flame.set_steady_tolerances(default=(5e-3, 5e-3),
                             T=(3e-6, 0.),
