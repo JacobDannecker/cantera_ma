@@ -64,6 +64,13 @@ int Refiner::analyze(size_t n, span<const double> z, span<const double> x)
     m_keep[0] = KEEP;
     m_keep[n-1] = KEEP;
 
+    // Restore protected points from previous iterations
+    for (size_t idx : m_protected) {
+        if (idx < n) {
+            m_keep[idx] = KEEP;
+        }
+    }
+
     m_nv = m_domain->nComponents();
 
     // find locations where cell size ratio is too large.
@@ -148,12 +155,16 @@ int Refiner::analyze(size_t n, span<const double> z, span<const double> x)
     }
 
     // Refine based on enthalpy curvature (for unity-Lewis-number flames)
+    // Under unity-Lewis-number, mass enthalpy varies piecewise-linearly with
+    // mixture fraction Z: linear decrease from oxidizer to flame front,
+    // linear increase from flame front to fuel. We check curvature in Z-space.
     if (m_enthalpy_enabled) {
         Flow1D* fflame = dynamic_cast<Flow1D*>(m_domain);
         if (fflame) {
             ThermoPhase& thermo = fflame->phase();
             size_t nsp = thermo.nSpecies();
             vector<double> h(n);
+            vector<double> Z(n);
             vector<double> y_work(nsp);
             for (size_t j = 0; j < n; j++) {
                 double Tj = value(x, c_offset_T, j);
@@ -163,12 +174,21 @@ int Refiner::analyze(size_t n, span<const double> z, span<const double> x)
                 thermo.setTemperature(Tj);
                 thermo.setMassFractions(y_work);
                 h[j] = thermo.enthalpy_mass();
+                Z[j] = thermo.mixtureFraction(
+                    fflame->m_fuel, fflame->m_oxidizer,
+                    fflame->m_mix_basis, fflame->m_mix_frac);
             }
 
-            // slope of enthalpy
+            // slope of enthalpy w.r.t. mixture fraction: dh/dZ
+            vector<double> dZ(n-1);
             vector<double> h_slope(n-1);
             for (size_t j = 0; j < n-1; j++) {
-                h_slope[j] = (h[j+1] - h[j]) / dz[j];
+                dZ[j] = Z[j+1] - Z[j];
+                if (fabs(dZ[j]) > 1e-12) {
+                    h_slope[j] = (h[j+1] - h[j]) / dZ[j];
+                } else {
+                    h_slope[j] = 0.0;
+                }
             }
 
             double hSlopeMin = *min_element(h_slope.begin(), h_slope.end());
@@ -177,10 +197,15 @@ int Refiner::analyze(size_t n, span<const double> z, span<const double> x)
 
             if (hSlopeMax - hSlopeMin > m_min_range * hSlopeMagnitude) {
                 double max_change = m_enthalpy_curve * (hSlopeMax - hSlopeMin);
+                // Minimum Z spacing: require at least 1e-6 of total Z range
+                double z_range = fabs(Z[n-1] - Z[0]);
+                double min_dZ = max(1e-12, 1e-6 * z_range);
                 for (size_t j = 0; j < n-2; j++) {
+                    double abs_dZ = fabs(dZ[j]);
+                    if (abs_dZ < min_dZ) continue;
                     double ratio = fabs(h_slope[j+1] - h_slope[j])
-                                   / (max_change + m_thresh/dz[j]);
-                    if (ratio > 1.0 && dz[j] >= 2*m_gridmin && dz[j+1] >= 2*m_gridmin) {
+                                   / (max_change + m_thresh/abs_dZ);
+                    if (ratio > 1.0 && abs_dZ > min_dZ && fabs(dZ[j+1]) > min_dZ) {
                         m_componentNames.insert("enthalpy");
                         m_insertPts.insert(j);
                         m_insertPts.insert(j+1);
@@ -188,6 +213,12 @@ int Refiner::analyze(size_t n, span<const double> z, span<const double> x)
                     // Protect enthalpy-relevant points from pruning by other components
                     if (ratio >= m_prune) {
                         m_keep[j+1] = KEEP;
+                        m_protected.insert(j+1);
+                    }
+                    if (ratio > 1.0) {
+                        m_protected.insert(j);
+                        m_protected.insert(j+1);
+                        m_protected.insert(j+2);
                     }
                 }
             }

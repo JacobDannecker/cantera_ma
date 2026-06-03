@@ -28,7 +28,7 @@ def clustered_grid(L, n, cluster_frac=0.32, beta_left=1.5, beta_right=2.6):
 reaction_mechanism = "h2o2.yaml"
 gas = ct.Solution(reaction_mechanism)
 width = 18e-3  
-grid = np.linspace(0, width, 100)
+grid = np.linspace(0, width, 200)
 f = ct.CounterflowDiffusionFlame(gas, width=width)
 gas = ct.Solution("h2o2.yaml")
 f2 = ct.CounterflowDiffusionFlame(gas, width=width)
@@ -46,9 +46,9 @@ file_name = "Scripts/Data/enthalpy.h5"
 #f.set_refine_criteria(ratio=2.0, slope=0.5, curve=0.5, prune=0)
 # Set up wall 
 wall_params = {
-    'Z_wall': 0.8,
+    'Z_wall': 0.3,
     'T_wall': 300,
-    'factor': 1e12,
+    'factor': 1000,
     'mix_frac': 'Bilger',
     'fuel': 'H2',
     'oxidizer': 'O2',
@@ -67,7 +67,7 @@ f.transport_model = "unity-Lewis-number"
 #
 
 f.set_refine_criteria(ratio=3, slope=0.5, curve=0.5, prune=0.0,
-                      enthalpy=True, enthalpy_curve=0.1)
+                      enthalpy=True, enthalpy_curve=0.08)
 
 f.set_initial_guess(data=file_name, group="initial") 
 
@@ -79,7 +79,11 @@ while not delta_T_ok:
         f.flame.set_non_adiabatic_wall(wall_params)                     
         f.solve(loglevel=1, refine_grid=True, auto=True)                           
         delta_T_wall = get_delta_T(f, wall_params)
-        wall_params["factor"] *= 2
+        if delta_T_wall > 10:
+            wall_params["factor"] *= 2
+        else:
+            wall_params["factor"] *= 1.3 
+        print(f"DELTA T WALL: {delta_T_wall}")
         if delta_T_wall < delta_T_max:
             print(f"mdot f, o : {f.fuel_inlet.mdot}, {f.oxidizer_inlet.mdot}")
             print(f"Strain max: {f.strain_rate("max")}")
@@ -91,7 +95,7 @@ while not delta_T_ok:
 
 f.save(file_name, name="new", overwrite=True)
 
-f2.restore(file_name, name="old")
+f2.restore(file_name, name="initial")
 
 
 def chi_stoich(f, z_stoich):

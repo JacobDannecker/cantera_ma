@@ -191,6 +191,17 @@ public:
         return m_prune;
     }
 
+    //! Get the set of protected point indices that survive pruning across
+    //! refinement iterations.
+    const set<size_t>& protectedPoints() const {
+        return m_protected;
+    }
+
+    //! Set the protected point indices after grid remapping.
+    void setProtected(const set<size_t>& pts) {
+        m_protected = pts;
+    }
+
 protected:
     //! Indices of grid points that need new grid points added after them
     set<size_t> m_insertPts;
@@ -210,6 +221,11 @@ protected:
 
     //! Flags for whether each component should be considered for grid refinement
     vector<bool> m_active;
+
+    //! Set of grid point indices that are protected from pruning across
+    //! refinement iterations. These are typically added by the enthalpy
+    //! refinement and persist through grid rebuilds.
+    set<size_t> m_protected;
 
     //! @name Refinement criteria
     //! @{
