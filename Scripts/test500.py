@@ -3,6 +3,7 @@ import cantera as ct
 from scipy import special
 from matplotlib import pyplot as plt
 import time
+import pandas as pd 
 
 def get_delta_T(f, wall_params):
     # Returns True if delta_T smaller than delta_T_max else reurns False
@@ -34,20 +35,20 @@ gas = ct.Solution("h2o2.yaml")
 f2 = ct.CounterflowDiffusionFlame(gas, width=width)
 f.P = 1.e5  
 f.fuel_inlet.mdot = 0.5  
-f.fuel_inlet.X = "H2:1"
-f.fuel_inlet.T = 300 
-f.oxidizer_inlet.mdot = 3.0 
-f.oxidizer_inlet.X = "O2:1"
-f.oxidizer_inlet.T = 300 
+f.fuel_inlet.X = "H2:0.4;H2O:0.6"
+f.fuel_inlet.T = 500 
+f.oxidizer_inlet.mdot = 0.5 
+f.oxidizer_inlet.X = "O2:0.95;H2O:0.05"
+f.oxidizer_inlet.T = 500 
 z_stoich = 0.111
 
 #f.set_refine_criteria(ratio=2.0, slope=0.5, curve=0.5, prune=0.03)
-file_name = "Scripts/Data/enthalpy.h5"
+file_name = "Scripts/Data/500.h5"
 #f.set_refine_criteria(ratio=2.0, slope=0.5, curve=0.5, prune=0)
 # Set up wall 
 wall_params = {
-    'Z_wall': 0.8,
-    'T_wall': 300,
+    'Z_wall': 1.,
+    'T_wall': 500,
     'factor': 1000,
     'mix_frac': 'Bilger',
     'fuel': 'H2',
@@ -69,14 +70,14 @@ f.transport_model = "unity-Lewis-number"
 f.set_refine_criteria(ratio=3, slope=0.5, curve=0.5, prune=0.0,
                       enthalpy=True, enthalpy_curve=0.05)
 
-f.set_initial_guess(data=file_name, group="initial") 
+#f.set_initial_guess(data=file_name, group="initial") 
 
 f.max_time_step_count = 1000 
 delta_T_max = 1.0 
 delta_T_ok = False
 while not delta_T_ok:
     try:
-        f.flame.set_non_adiabatic_wall(wall_params)                     
+        #f.flame.set_non_adiabatic_wall(wall_params)                     
         f.solve(loglevel=1, refine_grid=True, auto=True)                           
         delta_T_wall = get_delta_T(f, wall_params)
         if delta_T_wall > 10:
@@ -93,9 +94,9 @@ while not delta_T_ok:
     except BaseException as err:
         print(err)
 
-f.save(file_name, name="new", overwrite=True)
+f.save(file_name, name="initial", overwrite=True)
 
-f2.restore(file_name, name="old")
+f2.restore(file_name, name="initial")
 
 
 def chi_stoich(f, z_stoich):
@@ -116,7 +117,8 @@ print(f"mdot fuel reference: {f2.fuel_inlet.mdot}")
 print(f"mdot ox reference: {f2.oxidizer_inlet.mdot}")
 print(f"chi_st reference: {chi_st_ref}")
 
-
+csv_path = f"Scripts/Data/data.csv" 
+df = pd.read_csv(csv_path, names=["X", "Y"])  
 idx_H2 = f.gas.species_index("H2")
 idx_O2 = f.gas.species_index("O2")
 
@@ -139,7 +141,7 @@ ax[0].set_xlabel("<- fuel x ox->")
 # Fig 1  subplot 2
 ax[1].plot(f.mixture_fraction("H"), f.T, label=f"new")
 ax[1].plot(f2.mixture_fraction("H"), f2.T, label=f"old", linestyle="--")
-
+ax[1].plot(df["X"],  df["Y"])
 ax[1].grid()
 ax[1].legend()
 ax[1].set_ylabel("T")

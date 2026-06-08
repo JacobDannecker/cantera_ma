@@ -65,11 +65,12 @@ int Refiner::analyze(size_t n, span<const double> z, span<const double> x)
     m_keep[n-1] = KEEP;
 
     // Restore protected points from previous iterations
-    for (size_t idx : m_protected) {
-        if (idx < n) {
-            m_keep[idx] = KEEP;
-        }
-    }
+    // Temporarily disabled to test effect of protection
+    // for (size_t idx : m_protected) {
+    //     if (idx < n) {
+    //         m_keep[idx] = KEEP;
+    //     }
+    // }
 
     m_nv = m_domain->nComponents();
 
@@ -211,10 +212,16 @@ int Refiner::analyze(size_t n, span<const double> z, span<const double> x)
                         m_insertPts.insert(j+1);
                     }
                     // Protect enthalpy-relevant points from pruning by other components
-                    if (ratio >= m_prune) {
-                        m_keep[j+1] = KEEP;
-                        m_protected.insert(j+1);
-                    }
+                    // Temporarily disabled to test effect of protection
+                    // if (ratio >= m_prune) {
+                    //     m_keep[j+1] = KEEP;
+                    //     m_protected.insert(j+1);
+                    // }
+                    // if (ratio > 1.0) {
+                    //     m_protected.insert(j);
+                    //     m_protected.insert(j+1);
+                    //     m_protected.insert(j+2);
+                    // }
                     if (ratio > 1.0) {
                         m_protected.insert(j);
                         m_protected.insert(j+1);

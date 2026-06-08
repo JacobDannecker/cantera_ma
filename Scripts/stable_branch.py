@@ -163,8 +163,8 @@ f.oxidizer_inlet.X = "O2:1"
 f.fuel_inlet.T = 300                                                        
 f.oxidizer_inlet.T = 300                                                    
 f.transport_model = "unity-Lewis-number"                            
-f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)          
-
+f.set_refine_criteria(ratio=3, slope=0.5, curve=0.5, prune=0.0,                 
+                    enthalpy=True, enthalpy_curve=0.1) 
 # Wall                                                                      
 wall_params = {                                                             
 'Z_wall': 0.8,                                                                
@@ -177,9 +177,9 @@ wall_params = {
 }                                                                           
  
 z_stoich = 0.111 
-file_path = f"Scripts/Data/stabel_050.h5"                     
-csv_path = f"Scripts/Data/stable_050.csv"
-fig_path = f"Scripts/Data/stable_050.png"
+file_path = f"Scripts/Data/stable_080.h5"                     
+csv_path = f"Scripts/Data/stable_080.csv"
+fig_path = f"Scripts/Data/stable_080.png"
 # Names                                                                     
 name = "initial"                                                            
 names = [name,]  
@@ -193,10 +193,11 @@ temperature_limit_extinction = max(f.oxidizer_inlet.T, f.fuel_inlet.T)
 # Initialize and solve
 print('Creating the initial solution')
 
-f.solve(loglevel=0, auto=True)
+#f.solve(loglevel=0, auto=True)
+f.set_initial_guess(data="Scripts/Data/enthalpy.h5", group="initial")
 
-factor_last_working = 0 
-factor_last_working = solve_with_wall(f, wall_params, name_fallback=names[-1],factor_last_working=factor_last_working, delta_T_max=1.0, loglevel=0)
+#factor_last_working = 0 
+#factor_last_working = solve_with_wall(f, wall_params, name_fallback=names[-1],factor_last_working=factor_last_working, delta_T_max=1.0, loglevel=0)
 
 save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True)
 
@@ -258,7 +259,8 @@ while True:
         "Lambda", f.flame.radial_pressure_gradient * strain_factor ** exp_lam_a)
 
     try:                                                                        
-        factor_last_working = solve_with_wall(f, wall_params, name_fallback=names[-1],factor_last_working=factor_last_working, delta_T_max=1.0, loglevel=0)
+        factor_last_working = 1000
+        solve_with_wall(f, wall_params, name_fallback="initial",factor_last_working=factor_last_working, delta_T_max=1.0, loglevel=0)
     except ct.CanteraError as e:
         print('Error: Did not converge at n =', n, e)
 
@@ -294,14 +296,14 @@ while True:
                   alpha[-1], alpha[n_last_burning], delta_alpha))
 
         # Restore last burning solution
-        f.restore(file_path, names[-1])
+        f.set_initial_guess(data="Scripts/Data/enthalpy.h5", group="initial")
 
 # %%
 # Results
 # -------
 # Print some parameters at the extinction point, after restoring the last burning
 # solution
-file_name, entry = names(f"extinction/{n_last_burning:04d}")
+name = names(f"extinction/{n_last_burning:04d}")
 f.restore(file_name, entry)
 
 print('----------------------------------------------------------------------')

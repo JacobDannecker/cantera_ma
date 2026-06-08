@@ -5,7 +5,7 @@ import h5py
 from matplotlib import pyplot as plt
 from scipy import special
 
-file_path = f"Scripts/Data/stabel_050.h5"                                             
+file_path = f"Scripts/Data/stable_080.h5"                                             
 #csv_path = f"Scripts/Data/stable_050.csv"
 
 
@@ -39,7 +39,7 @@ idx_OH = f.gas.species_index("OH")
 idx_H = f.gas.species_index("H")                                              
 idx_O = f.gas.species_index("O")                                              
 h5_file = h5py.File(file_path, "r")                                          
-names = ["extinction/" + str(name)  for name in h5_file["extinction"].keys()][10]
+names = ["extinction/" + str(name)  for name in h5_file["extinction"].keys()]
 print(names)
 species_idx = f.gas.species_index("OH") 
 species_name = "OH"
