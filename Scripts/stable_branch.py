@@ -77,7 +77,7 @@ def save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True):
     # Save state of flame to hdf5 file. Add relevant data.
     z_wall = wall_params["Z_wall"]
     if info:
-        print("\n############################################################")
+        print("\n##############################################################")
         print(f"Solved at z_wall: {z_wall}")
         print("##############################################################")
     f.save(file_path, name=name, overwrite=True)
@@ -156,8 +156,8 @@ width = 18e-3
 grid = np.linspace(0, width, 250)                                           
 f = ct.CounterflowDiffusionFlame(gas, grid=grid)                            
 f.P = 1.e5                                                                  
-f.fuel_inlet.mdot = 0.5 
-f.oxidizer_inlet.mdot = 3.0
+f.fuel_inlet.mdot = 0.1 
+f.oxidizer_inlet.mdot = 0.5 
 f.fuel_inlet.X = "H2:1"                                                     
 f.oxidizer_inlet.X = "O2:1"                                                 
 f.fuel_inlet.T = 300                                                        
@@ -167,19 +167,19 @@ f.set_refine_criteria(ratio=3, slope=0.5, curve=0.5, prune=0.0,
                     enthalpy=True, enthalpy_curve=0.1) 
 # Wall                                                                      
 wall_params = {                                                             
-'Z_wall': 0.8,                                                                
+'Z_wall': 0.9,                                                                
 'T_wall': 300.0,                                                            
-'factor': 10000,                                                                
-'mix_frac': 'Bilger',                                                       
+'factor': 1000,                                                                
+'mix_frac': 'H',                                                       
 'fuel': 'H2',                                                               
 'oxidizer': 'O2',                                                           
 'basis': 'mass'                                                             
 }                                                                           
  
 z_stoich = 0.111 
-file_path = f"Scripts/Data/stable_080.h5"                     
-csv_path = f"Scripts/Data/stable_080.csv"
-fig_path = f"Scripts/Data/stable_080.png"
+file_path = f"Scripts/Data/stable_090.h5"                     
+csv_path = f"Scripts/Data/stable_090.csv"
+fig_path = f"Scripts/Data/stable_090.png"
 # Names                                                                     
 name = "initial"                                                            
 names = [name,]  
@@ -191,8 +191,6 @@ names = [name,]
 temperature_limit_extinction = max(f.oxidizer_inlet.T, f.fuel_inlet.T)
 
 # Initialize and solve
-print('Creating the initial solution')
-
 #f.solve(loglevel=0, auto=True)
 f.set_initial_guess(data="Scripts/Data/enthalpy.h5", group="initial")
 
@@ -215,7 +213,7 @@ exp_mdot_a = 1. / 2.
 # Set normalized initial strain rate
 alpha = [1.]
 # Initial relative strain rate increase
-delta_alpha = 1.
+delta_alpha = 5.
 # Factor of refinement of the strain rate increase
 delta_alpha_factor = 50.
 # Limit of the refinement: Minimum normalized strain rate increase
@@ -260,7 +258,7 @@ while True:
 
     try:                                                                        
         factor_last_working = 1000
-        solve_with_wall(f, wall_params, name_fallback="initial",factor_last_working=factor_last_working, delta_T_max=1.0, loglevel=0)
+        solve_with_wall(f, wall_params, name_fallback=names[-1],factor_last_working=factor_last_working, delta_T_max=1.0, loglevel=0)
     except ct.CanteraError as e:
         print('Error: Did not converge at n =', n, e)
 
@@ -290,21 +288,19 @@ while True:
         # Procedure if flame extinguished but abortion criterion is not satisfied
         # Reduce relative strain rate increase
         delta_alpha = delta_alpha / delta_alpha_factor
-
         print('Flame extinguished at alpha = {0:8.4F}. Restoring alpha = {1:8.4F} and '
               'trying delta_alpha = {2}'.format(
                   alpha[-1], alpha[n_last_burning], delta_alpha))
-
         # Restore last burning solution
-        f.set_initial_guess(data="Scripts/Data/enthalpy.h5", group="initial")
+        f.set_initial_guess(data=file_path, group=names[-1])
 
 # %%
 # Results
 # -------
 # Print some parameters at the extinction point, after restoring the last burning
 # solution
-name = names(f"extinction/{n_last_burning:04d}")
-f.restore(file_name, entry)
+name = f"extinction/{n_last_burning:04d}"
+f.restore(file_path, name)
 
 print('----------------------------------------------------------------------')
 print('Parameters at the extinction point:')
