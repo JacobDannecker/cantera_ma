@@ -152,7 +152,7 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., fac
 # Flame settings                                                            
 reaction_mechanism = "h2o2.yaml"                                            
 gas = ct.Solution(reaction_mechanism)                                       
-width = 18e-3                                                               
+width = 10e-3                                                               
 grid = np.linspace(0, width, 250)                                           
 f = ct.CounterflowDiffusionFlame(gas, grid=grid)                            
 f.P = 1.e5                                                                  
@@ -164,7 +164,7 @@ f.fuel_inlet.T = 300
 f.oxidizer_inlet.T = 300                                                    
 f.transport_model = "unity-Lewis-number"                            
 f.set_refine_criteria(ratio=3, slope=0.5, curve=0.5, prune=0.0,                 
-                    enthalpy=True, enthalpy_curve=0.1) 
+                    enthalpy=True, enthalpy_curve=0.3) 
 # Wall                                                                      
 wall_params = {                                                             
 'Z_wall': 0.9,                                                                
@@ -292,7 +292,9 @@ while True:
               'trying delta_alpha = {2}'.format(
                   alpha[-1], alpha[n_last_burning], delta_alpha))
         # Restore last burning solution
+        print(f"Setting Initial gues {names[-1]}")
         f.set_initial_guess(data=file_path, group=names[-1])
+
 
 # %%
 # Results

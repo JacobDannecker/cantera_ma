@@ -13,8 +13,8 @@ def get_delta_T(f, wall_params):
 
 reaction_mechanism = "h2o2.yaml"
 gas = ct.Solution(reaction_mechanism)
-width = 18e-3  
-grid = np.linspace(0, width, 600)
+width = 10e-3  
+grid = np.linspace(0, width, 300)
 f = ct.CounterflowDiffusionFlame(gas, grid=grid)
 gas = ct.Solution("h2o2.yaml")
 f.P = 1.e5  
