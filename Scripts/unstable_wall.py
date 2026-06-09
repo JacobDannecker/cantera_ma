@@ -139,18 +139,18 @@ width = 18e-3
 grid = np.linspace(0, width, 250)                                           
 f = ct.CounterflowDiffusionFlame(gas, grid=grid)                            
 f.P = 1.e5                                                                  
-f.fuel_inlet.mdot = 0.5 
-f.oxidizer_inlet.mdot = 3.0
+f.fuel_inlet.mdot = 1.6 
+f.oxidizer_inlet.mdot = 8.3 
 f.fuel_inlet.X = "H2:1"                                                     
 f.oxidizer_inlet.X = "O2:1"                                                 
 f.fuel_inlet.T = 300                                                        
 f.oxidizer_inlet.T = 300                                                    
 f.transport_model = "unity-Lewis-number"                            
-f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)          
+f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.5, prune=0.03)          
 
 # Wall                                                                      
 wall_params = {                                                             
-'Z_wall': 0.5,                                                                
+'Z_wall': 0.8,                                                                
 'T_wall': 300.0,                                                            
 'factor': 1,                                                                
 'mix_frac': 'Bilger',                                                       
@@ -160,9 +160,9 @@ wall_params = {
 }                                                                           
  
 z_stoich = get_z_stoich(gas, wall_params, reaction_mechanism)
-file_path = f"Scripts/Data/z_wall_050.h5"                     
-csv_path = f"Scripts/Data/z_wall_050.csv"
-fig_path = f"Scripts/Data/z_wall_050.png"
+file_path = f"Scripts/Data/unstable_080.h5"                     
+csv_path = f"Scripts/Data/unstable_080.csv"
+fig_path = f"Scripts/Data/unstable_080.png"
 # Names                                                                     
 name = "initial"                                                            
 names = [name,]                                                             
@@ -339,9 +339,6 @@ plt.plot(df.strain_rate, df.T_max)
 plt.xlabel('Maximum Axial Velocity Gradient [1/s]')
 plt.ylabel('Maximum Temperature [K]')
 plt.savefig(fig_path)
-
-
-
 
 
 

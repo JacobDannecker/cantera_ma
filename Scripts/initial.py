@@ -13,7 +13,7 @@ def get_delta_T(f, wall_params):
 
 reaction_mechanism = "h2o2.yaml"
 gas = ct.Solution(reaction_mechanism)
-width = 10e-3  
+width = 18e-3  
 grid = np.linspace(0, width, 300)
 f = ct.CounterflowDiffusionFlame(gas, grid=grid)
 gas = ct.Solution("h2o2.yaml")
@@ -26,10 +26,10 @@ f.oxidizer_inlet.X = "O2:1"
 f.oxidizer_inlet.T = 300 
 z_stoich = 0.111
 
-file_name = "Scripts/Data/stable_090.h5"
+file_name = "Scripts/Data/initial_080.h5"
 # Set up wall 
 wall_params = {
-    'Z_wall': 0.9,
+    'Z_wall': 0.8,
     'T_wall': 300,
     'factor': 1000,
     'mix_frac': 'Bilger',

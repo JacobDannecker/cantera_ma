@@ -155,7 +155,7 @@ if __name__ == "__main__":
     ax.set_ylabel("ΔT in K")
     ax.legend(fontsize=8)
     ax.grid(True)
-    ax.set_title("ΔT calculated ref - no ref")
+    ax.set_title("ΔT calculated (ref - no ref)")
 
     axes[0, 0].set_xlabel("Z")
     axes[0, 0].set_ylabel("h in MJ/kg")
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     axes[1, 1].set_ylabel("ΔT T in K")
     axes[1, 1].legend(fontsize=8)
     axes[1, 1].grid(True)
-    axes[1, 1].set_title("ΔT  original vs. calculated")
+    axes[1, 1].set_title("ΔT  (calcualted - original)")
 
     fig.suptitle(f"no ref ({results[0]['n']} pts) and ref ({results[1]['n']} pts)",
                  fontsize=12, y=1.02)

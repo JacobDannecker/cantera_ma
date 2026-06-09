@@ -5,7 +5,7 @@ import h5py
 from matplotlib import pyplot as plt
 from scipy import special
 
-file_path = f"Scripts/Data/stable_090.h5" 
+file_path = f"Scripts/Data/stable_test08no4.h5" 
 #csv_path = f"Scripts/Data/stable_050.csv"
 
 
@@ -27,10 +27,10 @@ f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
 
 fig, ax = plt.subplots(2, 1)                                                    
-fig.suptitle("H2/O2 z_wall 0.9")                                                           
+fig.suptitle("H2/O2 z_wall 0.8")                                                           
                                                                                 
 fig2, ax2 = plt.subplots(5, 1)                                                  
-fig2.suptitle("H2/O2 z_wall 0.9")                                                          
+fig2.suptitle("H2/O2 z_wall 0.8")                                                          
                                                                                 
                                                                                 
 idx_H2 = f.gas.species_index("H2")                                              
@@ -39,7 +39,7 @@ idx_OH = f.gas.species_index("OH")
 idx_H = f.gas.species_index("H")                                              
 idx_O = f.gas.species_index("O")                                              
 h5_file = h5py.File(file_path, "r")                                          
-names = ["extinction/" + str(name)  for name in h5_file["extinction"].keys()]
+names = ["extinction/" + str(name)  for name in h5_file["extinction"].keys()][::]
 print(names)
 species_idx = f.gas.species_index("OH") 
 species_name = "OH"
@@ -47,7 +47,7 @@ species = []
 for name in names:                                                              
     f.restore(file_path, name=name)                                             
     label = name                                                                
-
+    print(f.grid.shape)
     idx_T_max = np.abs(f.T - np.max(f.T)).argmin()
     species_T_max = f.Y[species_idx][:][idx_T_max]
     species.append(species_T_max)
