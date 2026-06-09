@@ -124,7 +124,6 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1.,
                 wall_params["factor"] = min(
                     wall_params["factor"] * factor_increase, max_factor
                 )
-            print(wall_params["factor"])
             f.flame.set_non_adiabatic_wall(wall_params)                     
             f.solve(loglevel=loglevel, refine_grid=True, auto=True)                           
             delta_T_wall = get_delta_T(f, wall_params)
@@ -175,7 +174,7 @@ f.set_refine_criteria(ratio=3, slope=0.5, curve=0.05, prune=0.04,
                     enthalpy=False, enthalpy_curve=0.05) 
 # Wall                                                                      
 wall_params = {                                                             
-'Z_wall': 0.4,                                                                
+'Z_wall': 0.5,                                                                
 'T_wall': 300.0,                                                            
 'factor': 1000,                                                                
 'mix_frac': 'H',                                                       
@@ -186,9 +185,9 @@ wall_params = {
  
 z_stoich = 0.111 
 output_path = Path("Scripts/Data")
-file_path = str(output_path / "stable_test04.h5")
-csv_path = str(output_path / "stable_test04.csv")
-fig_path = str(output_path / "stable_test04.png")
+file_path = str(output_path / "stable_test05.h5")
+csv_path = str(output_path / "stable_test05.csv")
+fig_path = str(output_path / "stable_test05.png")
 # Names                                                                     
 name = "initial"                                                            
 names = [name,]  

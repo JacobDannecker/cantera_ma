@@ -146,7 +146,7 @@ f.oxidizer_inlet.X = "O2:1"
 f.fuel_inlet.T = 300                                                        
 f.oxidizer_inlet.T = 300                                                    
 f.transport_model = "unity-Lewis-number"                            
-f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.5, prune=0.03)          
+f.set_refine_criteria(ratio=4.0, slope=0.5, curve=0.08, prune=0.07)          
 
 # Wall                                                                      
 wall_params = {                                                             
@@ -160,9 +160,9 @@ wall_params = {
 }                                                                           
  
 z_stoich = get_z_stoich(gas, wall_params, reaction_mechanism)
-file_path = f"Scripts/Data/unstable_080.h5"                     
-csv_path = f"Scripts/Data/unstable_080.csv"
-fig_path = f"Scripts/Data/unstable_080.png"
+file_path = f"Scripts/Data/unstable_080no3.h5"                     
+csv_path = f"Scripts/Data/unstable_080no3.csv"
+fig_path = f"Scripts/Data/unstable_080no3.png"
 # Names                                                                     
 name = "initial"                                                            
 names = [name,]                                                             
