@@ -14,43 +14,51 @@ def get_delta_T(f, wall_params):
 reaction_mechanism = "h2o2.yaml"
 gas = ct.Solution(reaction_mechanism)
 width = 18e-3  
-grid = np.linspace(0, width, 300)
+grid = np.linspace(0, width, 600)
 f = ct.CounterflowDiffusionFlame(gas, grid=grid)
 gas = ct.Solution("h2o2.yaml")
 f.P = 1.e5  
-f.fuel_inlet.mdot = 0.1  
+f.fuel_inlet.mdot = 0.1 
 f.fuel_inlet.X = "H2:1"
 f.fuel_inlet.T = 300 
-f.oxidizer_inlet.mdot = 0.5 
+f.oxidizer_inlet.mdot = 0.5
 f.oxidizer_inlet.X = "O2:1"
 f.oxidizer_inlet.T = 300 
 z_stoich = 0.111
 
-file_name = "Scripts/Data/initial_080.h5"
+
+
+tol_ss= [1.0e-5, 1.0e-9] # [rtol atol] for steady-state problem
+tol_ts= [1.0e-5, 1.0e-11] # [rtol atol] for time stepping
+f.flame.set_steady_tolerances(default=tol_ss)
+f.flame.set_transient_tolerances(default=tol_ts)
+                                  
+
+file_name = "Scripts/Data/initialNo3.h5"
 # Set up wall 
 wall_params = {
-    'Z_wall': 0.8,
+    'Z_wall': 0.5,
     'T_wall': 300,
-    'factor': 1000,
-    'mix_frac': 'Bilger',
+    'factor': 100,
+    'mix_frac': 'H',
     'fuel': 'H2',
     'oxidizer': 'O2',
     'basis': 'mass'
     }
 f.transport_model = "unity-Lewis-number"
 
-f.set_refine_criteria(ratio=3, slope=0.5, curve=0.5, prune=0.0,
-                      enthalpy=True, enthalpy_curve=0.1)
+f.set_refine_criteria(ratio=3, slope=0.5, curve=0.5, prune=0,
+                      enthalpy=True, enthalpy_curve=0.5)
 
 f.max_time_step_count = 1000 
 
 delta_T_max = 1. 
 delta_T_ok = False
-f.solve(loglevel=1, refine_grid=True, auto=True)                           
+#f.solve(loglevel=1, refine_grid=True, auto=True)                           
 while not delta_T_ok:
     try:
         f.flame.set_non_adiabatic_wall(wall_params)                     
-        f.solve(loglevel=1, refine_grid=True, auto=True)                           
+        f.solve(loglevel=1, refine_grid=True, auto=False)                           
         delta_T_wall = get_delta_T(f, wall_params)
         if delta_T_wall > 10:
             wall_params["factor"] *= 2
