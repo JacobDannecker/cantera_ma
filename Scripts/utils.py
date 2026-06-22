@@ -45,6 +45,7 @@ def save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True):
 
 def chi_stoich(f, z_stoich):
     a = np.mean(np.abs(np.gradient(f.velocity) / np.gradient(f.grid)))
+#    a = np.mean(np.abs(np.gradient(f.velocity / np.abs(np.gradient(f.mixture_fraction("H")))+0.0001)))
     chi_stoich = a*np.pi*(np.exp(-2*((special.erfinv(1-2*z_stoich))**2)))
     return chi_stoich
 
@@ -85,13 +86,13 @@ def classify_failure(msg):
         return "unknown"
 
 def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1.,
-                    factor_last_working=False, factor_increase=2, loglevel=0):
+                    factor_last_working=False, factor_increase=2, loglevel=0, refine_grid=True, auto=True):
     error_counter = 0
     z_wall = wall_params["Z_wall"]
     delta_T_ok = False
     failed = False
     wall_params["factor"] = 100.0
-    max_factor = 1e25
+    max_factor = 1e19
     set_factor = False
     last_error_msg = ""
     while not delta_T_ok and not failed:
@@ -103,9 +104,12 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1.,
                 wall_params["factor"] = min(
                     wall_params["factor"] * factor_increase, max_factor
                 )
+                if wall_params["factor"] >= max_factor:
+                    raise SolveFailure("max factor", "Max factor reached.")
             print(wall_params["factor"])
+            print(f"Grid refinement: {refine_grid}")
             f.flame.set_non_adiabatic_wall(wall_params)                     
-            f.solve(loglevel=loglevel, refine_grid=True, auto=True)                           
+            f.solve(loglevel=loglevel, refine_grid=refine_grid, auto=auto)                           
             delta_T_wall = get_delta_T(f, wall_params)
             if delta_T_wall < delta_T_max:
                 print(f"mdot f, o : {f.fuel_inlet.mdot}, {f.oxidizer_inlet.mdot}")
@@ -113,6 +117,8 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1.,
                 print(f"Strain max: {strain_max}")
                 delta_T_ok = True
                 print(f"Solution found at delta_T_wall: {delta_T_wall}")
+                print(f"Gridpoints: {f.grid.shape}")
+                factor_last_working = wall_params["factor"]
                 return factor_last_working
 
         except ct.CanteraError as err:

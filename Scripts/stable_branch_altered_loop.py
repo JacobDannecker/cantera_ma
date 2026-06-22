@@ -41,12 +41,12 @@ exp_V_a = 1.
 exp_lam_a = 2.
 exp_mdot_a = 1. / 2.
 
-delta_alpha_factor = 50.
+initial_delta_alpha = 5
 delta_alpha_min = 0.001
-
+factor_last_working = 1000
 # Z_wall values to scan: from 1.0 down to 0.1115 in steps of 0.5
-Z_wall_values = np.arange(0.90, 0.e2, -0.02)
-
+Z_wall_values = np.arange(0.98, 0.12, -0.05)
+print(Z_wall_values)
 for Z_wall_val in Z_wall_values:
     print(f"\n{'='*60}")
     print(f"Computing for Z_wall = {Z_wall_val}")
@@ -81,7 +81,7 @@ for Z_wall_val in Z_wall_values:
 
     # Output files with Z_wall in the name
     file_tag = f"Z{Z_wall_val:.4f}"
-    file_path = str(output_path / f"Xextinction_{file_tag}.h5")
+    file_path = str(output_path / f"No6extinction_{file_tag}.h5")
 
     name = "initial"
     names = [name]
@@ -98,7 +98,7 @@ for Z_wall_val in Z_wall_values:
     n_last_burning = 0
     T_max = [np.max(f.T)]
     a_max = [np.max(np.abs(np.gradient(f.velocity) / np.gradient(f.grid)))]
-
+    refine_grid = True
     while True:
         n += 1
         alpha.append(alpha[n_last_burning] + delta_alpha)
@@ -115,24 +115,27 @@ for Z_wall_val in Z_wall_values:
         solved = False
         failure_type = None
         try:
-            factor_last_working = 1000
-            ut.solve_with_wall(f, wall_params, name_fallback=names[-1],
+            factor_last_working = ut.solve_with_wall(f, wall_params, name_fallback=names[-1],
                                factor_last_working=factor_last_working,
-                               delta_T_max=1.0, loglevel=0)
+                               delta_T_max=5.0, loglevel=0, refine_grid=refine_grid, auto=True)
             solved = True
         except (ut.SolveFailure, ct.CanteraError) as e:
+            factor_last_working = 1000
             failure_type = getattr(e, 'failure_type', ut.classify_failure(str(e)))
             print(f"Error: Did not converge at n = {n}, type={failure_type}")
 
         if solved:
+            refine_grid = True
             t_max_val = float(np.max(f.T))
             a_max_val = float(np.max(np.abs(np.gradient(f.velocity) / np.gradient(f.grid))))
             T_max.append(t_max_val)
             a_max.append(a_max_val)
             print(f"MAX Temp {t_max_val}")
-
+            
             if not np.isclose(t_max_val, temperature_limit_extinction):
                 n_last_burning = n
+                if delta_alpha < initial_delta_alpha:
+                    delta_alpha = initial_delta_alpha
                 name = f"extinction/{n:04d}"
                 names.append(name)
                 ut.save_with_attributes(f, file_path, name, wall_params, z_stoich_val, info=True)
@@ -155,7 +158,8 @@ for Z_wall_val in Z_wall_values:
                   'Abortion criterion satisfied.')
             break
         else:
-            delta_alpha = delta_alpha / delta_alpha_factor
+            delta_alpha *= 0.8 
+            refine_grid = False
             alpha.pop()
             n = n - 1
             print(f'Flame extinguished at alpha = {alpha[-1]:8.4f} (discarded). '
