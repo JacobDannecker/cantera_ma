@@ -1418,6 +1418,35 @@ cdef class Sim1D:
         c = self.sim.getRefineCriteria(idom)
         return {'ratio': c[0], 'slope': c[1], 'curve': c[2], 'prune': c[3]}
 
+    def set_enthalpy_refinement(self, domain, enable):
+        """
+        Enable or disable enthalpy-based grid refinement for a domain.
+        Under the unity-Lewis-number assumption, the mass enthalpy varies
+        piecewise-linearly with mixture fraction. Enabling this refinement
+        monitors enthalpy curvature and adds grid points where the profile
+        deviates from linearity, while protecting those points from pruning.
+
+        :param domain:
+            domain object, index, or name
+        :param enable:
+            True to enable, False to disable
+        """
+        idom = self.domain_index(domain)
+        self.sim.setEnthalpyRefinement(idom, enable)
+
+    def set_enthalpy_curve(self, domain, curve):
+        """
+        Set the curvature criterion for enthalpy refinement.
+
+        :param domain:
+            domain object, index, or name
+        :param curve:
+            maximum fractional change in the derivative of enthalpy
+            between adjacent grid points (0.0 < curve < 1.0)
+        """
+        idom = self.domain_index(domain)
+        self.sim.setEnthalpyCurve(idom, curve)
+
     def set_grid_min(self, dz, domain=None):
         """
         Set the minimum grid spacing on ``domain``. If ``domain`` is `None`, then

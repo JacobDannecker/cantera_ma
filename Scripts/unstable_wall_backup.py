@@ -6,62 +6,58 @@ import time
 import h5py
 import logging
 import sys
-import pandas as pd
+import pandas as pd 
 import utils as ut
+
 
 
 # Flame settings                                                            
 reaction_mechanism = "h2o2.yaml"                                            
 gas = ct.Solution(reaction_mechanism)                                       
 width = 18e-3                                                               
-grid = np.linspace(0, width, 300)                                           
+grid = np.linspace(0, width, 250)                                           
 f = ct.CounterflowDiffusionFlame(gas, grid=grid)                            
 f.P = 1.e5                                                                  
-f.fuel_inlet.X = "H2:1"
-f.oxidizer_inlet.X = "O2:1"
-f.fuel_inlet.T = 300
-f.oxidizer_inlet.T = 300
-f.transport_model = "unity-Lewis-number"
+f.fuel_inlet.X = "H2:1"                                                     
+f.oxidizer_inlet.X = "O2:1"                                                 
+f.fuel_inlet.T = 300                                                        
+f.oxidizer_inlet.T = 300                                                    
+f.transport_model = "unity-Lewis-number"                            
+f.set_refine_criteria(ratio=3.0, slope=0.5, curve=0.5, prune=0.03)          
 
 # Save data in:
-file_path = "Scripts/Data/unstable_No6extinction_Z0.3800.h5"
-csv_path = "Scripts/Data/unstable_No6extinction_Z0.3800.csv"
-fig_path = "Scripts/Data/unstable_No6extinction_Z0.3800.png"
-
-# Initialize flame from enthalpy guess and solve with wall
+file_path = f"Scripts/Data/unstable_utilNo2.h5"                     
+csv_path = f"Scripts/Data/unstable_utilNo2.csv"
+fig_path = f"Scripts/Data/unstable_utilNo2.png"
 
 
-start_file = "Scripts/Data/No6extinction_Z0.3800.h5"
-h5_file = h5py.File(start_file, "r")
-keys = ["extinction/" + key for key in h5_file["extinction"].keys()]
-second_last_run = keys[-2]
+# Start from last stable burning flamelet
+load_from_file = "Scripts/DataPlot/z06.h5"
+h5_file = h5py.File(load_from_file, "r")                                              
+last_run = [str(name) for name in h5_file.keys()][-1]
+print(last_run)
+z_wall = h5_file[last_run]["flame"]["z"].attrs["z_wall"]                     
+f.set_initial_guess(data=load_from_file, group=last_run)           
 
-
-f.fuel_inlet.mdot = h5_file[second_last_run]["fuel_inlet"].attrs["mass-flux"]
-f.oxidizer_inlet.mdot = h5_file[second_last_run]["oxidizer_inlet"].attrs["mass-flux"]
-
-z_wall = h5_file[second_last_run]["flame"]["z"].attrs["z_wall"]
-
-wall_params = {
-    'Z_wall': z_wall,
-    'T_wall': 300.0,
-    'factor': 1000,
-    'mix_frac': 'H',
-    'fuel': 'H2',
-    'oxidizer': 'O2',
-    'basis': 'mass'
-}
+# Wall                                                                      
+wall_params = {                                                             
+'Z_wall': z_wall,                                                                
+'T_wall': 300.0,                                                            
+'factor': 1000,                                                                
+'mix_frac': 'H',                                                       
+'fuel': 'H2',                                                               
+'oxidizer': 'O2',                                                           
+'basis': 'mass'                                                             
+}                                                                           
 
 z_stoich = ut.get_z_stoich(gas, wall_params, reaction_mechanism)
-#f.solve(auto=True, refine_grid=True)
-#ut.solve_with_wall(f, wall_params, name_fallback="initial", factor_last_working=1000, delta_T_max=1.0, loglevel=0)
-#f.set_initial_guess(data=file_path, group="initial")
-f.set_initial_guess(start_file, second_last_run)
-f.set_refine_criteria(ratio=3.0, slope=0.5, curve=0.5, prune=0.09, enthalpy=True, enthalpy_curve=0.5)
-
-ut.save_with_attributes(f, file_path, "initial", wall_params, z_stoich, info=True)
-
-names = ["initial"]
+# Names of runs list                                                                   
+names = []                                                             
+# Initial Solution
+#f.solve(loglevel=0, refine_grid=True)                               
+#f.save(file_path, name=name, overwrite=True)
+#solve_with_wall(f, wall_params, delta_T_max=1.0, loglevel=0)
+#ut.save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True)
 
 
 ##############################################################################
@@ -75,21 +71,21 @@ n_max = 500
 # failures early on, while using higher values on the unstable branch tend to help
 # with finding solutions where the peak temperature is very low.
 initial_spacing = 0.9
-unstable_spacing =  0.85
+unstable_spacing =  0.95
 
 # Amount to adjust temperature at the control point each step [K]
-temperature_increment = 20
-max_increment = 100
+temperature_increment = 20.0
+max_increment = 100 
 
 # Try to keep T_max from changing more than this much each step [K]
-target_delta_T_max = 200
+target_delta_T_max = 20 
 
 # Stop after this many successive errors
 max_error_count = 5
 error_count = 0
 
 # Stop after any failure if the strain rate has dropped to this fraction of the maximum
-strain_rate_tol = 0.01
+strain_rate_tol = 0.10
 
 f.two_point_control_enabled = True
 
@@ -99,15 +95,13 @@ f.max_time_step_count = 1000
 T_max = max(f.T)
 a_max = strain_rate = f.strain_rate('max')
 data = []  # integral output quantities for each step
-solved = False
-factor_last_working = 1000
-refine_grid = True
+
 for i in range(n_max):
     print(f"i = {i}")
-    #if strain_rate > 0.98 * a_max:
-    #    spacing = initial_spacing
-    #else:
-    spacing = 0.95
+    if strain_rate > 0.98 * a_max:
+        spacing = initial_spacing
+    else:
+        spacing = unstable_spacing
     control_temperature = np.min(f.T) + spacing*(np.max(f.T) - np.min(f.T))
 
     # Store the flame state in case the iteration fails and we need to roll back
@@ -119,31 +113,23 @@ for i in range(n_max):
     f.set_left_control_point(control_temperature)
     f.set_right_control_point(control_temperature)
     print(f"Temperature increment = {temperature_increment}")
-    #print(control_temperature, f.left_control_point_temperature, f.right_control_point_temperature)
-    ## This decrement is what drives the two-point control. If failure
-    ## occurs, try decreasing the decrement.
-    #delta_left =  f.left_control_point_temperature - control_temperature 
-    #delta_right = f.right_control_point_temperature - control_temperature 
-    #if delta_left > 0:
-    #    f.left_control_point_temperature -= (temperature_increment*0.5 + delta_left)
-    #else: 
-    #    f.left_control_point_temperature -= temperature_increment
+    print(control_temperature, f.left_control_point_temperature, f.right_control_point_temperature)
+    # This decrement is what drives the two-point control. If failure
+    # occurs, try decreasing the decrement.
+    delta_left =  f.left_control_point_temperature - control_temperature 
+    delta_right = f.right_control_point_temperature - control_temperature 
+    if delta_left > 0:
+        f.left_control_point_temperature -= (temperature_increment*0.5 + delta_left)
+    else: 
+        f.left_control_point_temperature -= temperature_increment
 
-    #if delta_right > 0:
-    #    f.right_control_point_temperature -= (temperature_increment*0.5 + delta_right)
-    #else: 
-    #    f.right_control_point_temperature -= temperature_increment
-    #
-    #print(control_temperature, f.left_control_point_temperature, f.right_control_point_temperature)
+    if delta_right > 0:
+        f.right_control_point_temperature -= (temperature_increment*0.5 + delta_right)
+    else: 
+        f.right_control_point_temperature -= temperature_increment
+    
+    print(control_temperature, f.left_control_point_temperature, f.right_control_point_temperature)
    
-    #idx = np.argmin(f.mixture_fraction("H") - 0.5)
-    #T_at_wall = f.T[idx]
-    #if control_temperature < (T_at_wall + 50):
-    #    print("sosososososos!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-
-    f.right_control_point_temperature -= temperature_increment
-    f.left_control_point_temperature -= temperature_increment
-
     f.clear_stats()
 
     if (f.left_control_point_temperature < f.fuel_inlet.T + 100
@@ -156,8 +142,7 @@ for i in range(n_max):
     try:
         #try:
         factor = 1000
-        factor_last_working = ut.solve_with_wall(f, wall_params, factor_last_working=factor, delta_T_max=1.0, loglevel=0, refine_grid=refine_grid, auto=False)
-        print(f"Factor last working: {factor_last_working}")
+        solved = ut.solve_with_wall(f, wall_params, factor_last_working=factor, delta_T_max=1.0, loglevel=0)
         #except BaseException as err:
         #    print("Try wihtout last_working_factor.=============================================")
         #    factor_last_working = solve_with_wall(f, wall_params, name_fallback=names[-1],factor_last_working=False, delta_T_max=1.0, loglevel=0)
@@ -170,10 +155,8 @@ for i in range(n_max):
         elif abs(max(f.T) - T_max) > target_delta_T_max:
             # Max temperature is changing quickly. Scale down increment for next step
             temperature_increment *= 0.9 * target_delta_T_max / (abs(max(f.T) - T_max))
-        solved = True
         error_count = 0
-
-    except (ut.SolveFailure, ct.CanteraError) as err:
+    except ct.CanteraError as err:
         print(err)
         if strain_rate / a_max < strain_rate_tol:
             print('SUCCESS! Traversed unstable branch down to '
@@ -182,23 +165,16 @@ for i in range(n_max):
 
         # Restore the previous solution and try a smaller temperature increment for the
         # next iteration
-        factor = 1000
-        if names:
-            f.set_initial_guess(file_path, group=names[-1])
-            print(f"Restor solution: {names[-1]} ")
-        #refine_grid = False
+        factor = 100
+        f.restore(file_path, name=names[-1])
+        print(f"Restor solution: {names[-1]} ")
+        #f.from_array(backup_state)
         temperature_increment = 0.5 * temperature_increment
-       # if spacing > 0.6:
-       #     spacing *= 0.9
-       #     print(f"Spacing set to: {spacing}")
         error_count += 1
         print(f"Solver did not converge on iteration {i}. Trying again with "
                        f"dT = {temperature_increment:.2f}")
 
-    if solved:
-        solved = False
-        #refine_grid = True
-        spacing = 0.95 
+    if ct.hdf_support():
         name = f"iteration{i}"
         names.append(name)
         ut.save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True)
@@ -243,7 +219,7 @@ df = pd.DataFrame.from_records(data)
 df.to_csv(csv_path)
 
 plt.figure()
-plt.semilogx(df.strain_rate, df.T_max)
+plt.plot(df.strain_rate, df.T_max)
 plt.xlabel('Maximum Axial Velocity Gradient [1/s]')
 plt.ylabel('Maximum Temperature [K]')
 plt.savefig(fig_path)
@@ -264,17 +240,16 @@ idx_O2 = f.gas.species_index("O2")
 idx_OH = f.gas.species_index("OH")
 
 for name in names:                                                      
-    if not name == "initial":
-        f.restore(file_path, name=name)                                     
-        label = name
-        # Subplot 1 Temperature
-        ax[0].plot(f.mixture_fraction("H"), f.T, label=label)
-        # Subplot 2  enthalpy                                                   
-        ax[1].plot(f.mixture_fraction("H"), f.h, label=label)
-        # Sublots species
-        ax2[0].plot(f.mixture_fraction("H"), f.Y[idx_H2], label=label)
-        ax2[1].plot(f.mixture_fraction("H"), f.Y[idx_O2], label=label)
-        ax2[2].plot(f.mixture_fraction("H"), f.Y[idx_OH], label=label)
+    f.restore(file_path, name=name)                                     
+    label = name
+    # Subplot 1 Temperature
+    ax[0].plot(f.mixture_fraction("H"), f.T, label=label)
+    # Subplot 2  enthalpy                                                   
+    ax[1].plot(f.mixture_fraction("H"), f.h, label=label)
+    # Sublots species
+    ax2[0].plot(f.mixture_fraction("H"), f.Y[idx_H2], label=label)
+    ax2[1].plot(f.mixture_fraction("H"), f.Y[idx_O2], label=label)
+    ax2[2].plot(f.mixture_fraction("H"), f.Y[idx_OH], label=label)
 
 for a in ax:
     a.grid()                                                            

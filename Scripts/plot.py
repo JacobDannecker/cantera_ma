@@ -4,8 +4,8 @@ import pandas as pd
 import h5py
 from matplotlib import pyplot as plt
 from scipy import special
-
-file_path = f"Scripts/Data/stabel_050.h5"                                             
+import utils as ut
+file_path = f"Scripts/Data/unstable_No6extinction_Z0.3800.h5" 
 #csv_path = f"Scripts/Data/stable_050.csv"
 
 
@@ -27,11 +27,13 @@ f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0.03)
 
 
 fig, ax = plt.subplots(2, 1)                                                    
-fig.suptitle("H2/O2 z_wall 0.9")                                                           
+fig.suptitle(f"H2/O2 {file_path}")                                                           
                                                                                 
 fig2, ax2 = plt.subplots(5, 1)                                                  
-fig2.suptitle("H2/O2 z_wall 0.9")                                                          
+fig2.suptitle(f"H2/O2 {file_path}")                                                          
                                                                                 
+fig3, ax3 = plt.subplots(1, 1)                                                  
+fig3.suptitle(f"H2/O2 {file_path}")                                                          
                                                                                 
 idx_H2 = f.gas.species_index("H2")                                              
 idx_O2 = f.gas.species_index("O2")                                              
@@ -39,15 +41,25 @@ idx_OH = f.gas.species_index("OH")
 idx_H = f.gas.species_index("H")                                              
 idx_O = f.gas.species_index("O")                                              
 h5_file = h5py.File(file_path, "r")                                          
-names = ["extinction/" + str(name)  for name in h5_file["extinction"].keys()][10]
-print(names)
+#names = ["extinction/" + str(name)  for name in h5_file["extinction"].keys()][::]
+names = [str(name)  for name in h5_file.keys()][::]
+names.append("initial")
 species_idx = f.gas.species_index("OH") 
 species_name = "OH"
 species = []
-for name in names:                                                              
-    f.restore(file_path, name=name)                                             
-    label = name                                                                
+amax = []
+tmax = []
 
+for  name in names:                                                              
+    f.restore(file_path, name=name)                                             
+    idx = np.argmin(np.abs(f.mixture_fraction("H") - 0.38))
+
+    if (f.T[idx] - 300) < 1.5 and (f.mixture_fraction("H")[idx] - 0.38) < 0.1:
+        print(f.mixture_fraction("H")[idx])
+        amax.append(f.strain_rate("mean"))
+        tmax.append(np.max(f.T))
+
+    label = name                                                                
     idx_T_max = np.abs(f.T - np.max(f.T)).argmin()
     species_T_max = f.Y[species_idx][:][idx_T_max]
     species.append(species_T_max)
@@ -97,10 +109,9 @@ ax2[4].set_ylabel("H")
 #ax3[1].set_ylabel('Maximum Temperature [K]')
 #
 
-
+ax3.scatter(amax, tmax)
 
 plt.tight_layout()                                                              
 plt.show()                                                                      
-
 
 

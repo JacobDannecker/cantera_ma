@@ -34,7 +34,8 @@ class FlameBase(Sim1D):
         self.gas = gas
         self.flame.P = gas.P
 
-    def set_refine_criteria(self, ratio=10.0, slope=0.8, curve=0.8, prune=0.0):
+    def set_refine_criteria(self, ratio=10.0, slope=0.8, curve=0.8, prune=0.0,
+                           enthalpy=None, enthalpy_curve=None):
         """
         Set the criteria used for grid refinement.
 
@@ -54,10 +55,48 @@ class FlameBase(Sim1D):
             'prune', the grid point is assumed not to be needed and is removed.
             Set prune significantly smaller than 'slope' and 'curve'. Set to
             zero to disable pruning the grid.
+        :param enthalpy:
+            If True, enable enthalpy-based grid refinement, which monitors
+            mass enthalpy curvature under the unity-Lewis-number assumption
+            and adds points where the profile deviates from linearity. These
+            points are protected from pruning. If False or None, enthalpy
+            refinement is disabled.
+        :param enthalpy_curve:
+            Curvature criterion for enthalpy refinement. Must be between 0.0
+            and 1.0. If not specified, defaults to the value of ``curve``.
 
         >>> f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0)
+        >>> f.set_refine_criteria(ratio=3.0, slope=0.1, curve=0.2, prune=0,
+        ...                       enthalpy=True, enthalpy_curve=0.1)
         """
         super().set_refine_criteria(self.flame, ratio, slope, curve, prune)
+        if enthalpy is not None:
+            self.set_enthalpy_refinement(self.flame, enthalpy)
+        if enthalpy_curve is not None:
+            self.set_enthalpy_curve(self.flame, enthalpy_curve)
+
+    def set_enthalpy_refinement(self, domain, enable):
+        """
+        Enable or disable enthalpy-based grid refinement for the flow domain.
+
+        :param domain:
+            domain object, index, or name
+        :param enable:
+            True to enable, False to disable
+        """
+        super().set_enthalpy_refinement(domain, enable)
+
+    def set_enthalpy_curve(self, domain, curve):
+        """
+        Set the curvature criterion for enthalpy refinement.
+
+        :param domain:
+            domain object, index, or name
+        :param curve:
+            maximum fractional change in the derivative of enthalpy
+            between adjacent grid points (0.0 < curve < 1.0)
+        """
+        super().set_enthalpy_curve(domain, curve)
 
     def get_refine_criteria(self):
         """

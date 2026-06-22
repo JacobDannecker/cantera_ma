@@ -25,6 +25,27 @@ import h5py
 from scipy import special
 import cantera as ct
 
+class SolveFailure(Exception):
+    """Carries a failure_type classifying why solve_with_wall failed."""
+    def __init__(self, failure_type, message):
+        self.failure_type = failure_type
+        super().__init__(message)
+
+def classify_failure(msg):
+    msg_lower = msg.lower()
+    if "max number of grid points" in msg_lower:
+        return "grid_limit"
+    elif "bandmatrix" in msg_lower or ("matrix" in msg_lower and "singular" in msg_lower):
+        return "singular"
+    elif "newton steady-state solve failed" in msg_lower:
+        return "convergence"
+    elif "timestep" in msg_lower or "time step" in msg_lower:
+        return "timestep"
+    elif "enthalpy" in msg_lower:
+        return "enthalpy_refinement"
+    else:
+        return "unknown"
+
 def add_attributes(f, file_path, name, wall_params, z_stoich):
     z_array = f.mixture_fraction(wall_params["mix_frac"])
     h_mass_array = f.enthalpy_mass
@@ -84,7 +105,8 @@ def save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True):
     add_attributes(f, file_path, name, wall_params, z_stoich)
 
 
-def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., factor_last_working=False, factor_increase=2, loglevel=0):
+def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1.,
+                    factor_last_working=False, factor_increase=2, loglevel=0):
     error_counter = 0
     z_wall = wall_params["Z_wall"]
     delta_T_ok = False
@@ -92,6 +114,7 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., fac
     wall_params["factor"] = 100.0
     max_factor = 1e25
     set_factor = False
+    last_error_msg = ""
     while not delta_T_ok and not failed:
         try:
             if factor_last_working and not set_factor:
@@ -101,58 +124,43 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1., fac
                 wall_params["factor"] = min(
                     wall_params["factor"] * factor_increase, max_factor
                 )
+            print(wall_params["factor"])
             f.flame.set_non_adiabatic_wall(wall_params)                     
-            f.solve(loglevel=loglevel, refine_grid=True)                           
+            f.solve(loglevel=loglevel, refine_grid=True, auto=True)                           
             delta_T_wall = get_delta_T(f, wall_params)
             if delta_T_wall < delta_T_max:
                 print(f"mdot f, o : {f.fuel_inlet.mdot}, {f.oxidizer_inlet.mdot}")
-                print(f"Strain max: {f.strain_rate("max")}")
+                strain_max = f.strain_rate("max")
+                print(f"Strain max: {strain_max}")
                 delta_T_ok = True
                 print(f"Solution found at delta_T_wall: {delta_T_wall}")
                 return factor_last_working
 
-
-        except ct.CanteraError as err:      
-            print(err)                                                      
+        except ct.CanteraError as err:
+            last_error_msg = str(err)
+            print(err)
             error_counter += 1
             print(f"Error count {error_counter}")
             print("======================Had an exception in solve_with_wall")
             if error_counter <= 3:
                 # Reset factor and reduce factor_increase
-                wall_params["factor"] /= factor_increase                       
-                if factor_increase > 1.2:                                       
-                    factor_increase *= 0.9                                      
+                wall_params["factor"] /= factor_increase
+                if factor_increase > 1.2:
+                    factor_increase *= 0.9
             else:
                 print("No solution found. Leaving solve_with_wall()")
                 failed = True
-                raise ct.CanteraError("Failed solve_with_wall()")
 
-           # if  error_counter == 4:
-           #     # Start from initial solution wit wall
-           #     # reset factor and factor_increase
-           #     print("Try with initial solution as ininital guess.")       
-           #     f.set_initial_guess(data=file_path, group=name_fallback)         
-           #     #f.from_array(name_fallback)
-           #     wall_params["factor"] = 10                                  
-           #     factor_increase = 2                                         
-
-           # if error_counter > 4:
-           #     print("Reached max Errors!!!!")
-           #     # Reset factor and reduce factor_increase
-           #     wall_params["factor"] /= factor_increase                       
-           #     if factor_increase > 1.2:                                       
-           #         factor_increase *= 0.9                                      
-
-        #if error_counter > 5:
-        #    print("No solution found. error_counter: {error_counter}")
-        #    failed = True 
-        #    raise ct.CanteraError("No solution with wall found!!!!!!!!!!!!")
-         
+    if failed:
+        failure_type = classify_failure(last_error_msg)
+        raise SolveFailure(failure_type,
+            f"Failed solve_with_wall() at factor={wall_params['factor']:.1f}: "
+            f"{last_error_msg}")
 
 # Flame settings                                                            
 reaction_mechanism = "h2o2.yaml"                                            
 gas = ct.Solution(reaction_mechanism)                                       
-width = 10e-3                                                               
+width = 18e-3                                                               
 grid = np.linspace(0, width, 250)                                           
 f = ct.CounterflowDiffusionFlame(gas, grid=grid)                            
 f.P = 1.e5                                                                  
@@ -163,11 +171,11 @@ f.oxidizer_inlet.X = "O2:1"
 f.fuel_inlet.T = 300                                                        
 f.oxidizer_inlet.T = 300                                                    
 f.transport_model = "unity-Lewis-number"                            
-f.set_refine_criteria(ratio=3, slope=0.5, curve=0.5, prune=0.0,                 
-                    enthalpy=True, enthalpy_curve=0.3) 
+f.set_refine_criteria(ratio=3, slope=0.5, curve=0.05, prune=0.04,                 
+                    enthalpy=False, enthalpy_curve=0.05) 
 # Wall                                                                      
 wall_params = {                                                             
-'Z_wall': 0.9,                                                                
+'Z_wall': 0.3,                                                                
 'T_wall': 300.0,                                                            
 'factor': 1000,                                                                
 'mix_frac': 'H',                                                       
@@ -177,9 +185,10 @@ wall_params = {
 }                                                                           
  
 z_stoich = 0.111 
-file_path = f"Scripts/Data/stable_090.h5"                     
-csv_path = f"Scripts/Data/stable_090.csv"
-fig_path = f"Scripts/Data/stable_090.png"
+output_path = Path("Scripts/Data")
+file_path = str(output_path / "stable_test03no2.h5")
+csv_path = str(output_path / "stable_test03no2.csv")
+fig_path = str(output_path / "stable_test03no2.png")
 # Names                                                                     
 name = "initial"                                                            
 names = [name,]  
@@ -191,7 +200,7 @@ names = [name,]
 temperature_limit_extinction = max(f.oxidizer_inlet.T, f.fuel_inlet.T)
 
 # Initialize and solve
-#f.solve(loglevel=0, auto=True)
+#f.solve(loglevel=0, refine_grid=True, auto=True)
 f.set_initial_guess(data="Scripts/Data/enthalpy.h5", group="initial")
 
 #factor_last_working = 0 
@@ -256,43 +265,61 @@ while True:
     f.flame.set_values(
         "Lambda", f.flame.radial_pressure_gradient * strain_factor ** exp_lam_a)
 
-    try:                                                                        
+    solved = False
+    failure_type = None
+    try:
         factor_last_working = 1000
-        solve_with_wall(f, wall_params, name_fallback=names[-1],factor_last_working=factor_last_working, delta_T_max=1.0, loglevel=0)
-    except ct.CanteraError as e:
-        print('Error: Did not converge at n =', n, e)
+        solve_with_wall(f, wall_params, name_fallback=names[-1],
+                        factor_last_working=factor_last_working,
+                        delta_T_max=1.0, loglevel=0)
+        solved = True
+    except (SolveFailure, ct.CanteraError) as e:
+        failure_type = getattr(e, 'failure_type', classify_failure(str(e)))
+        print(f"Error: Did not converge at n = {n}, type={failure_type}")
 
-    T_max.append(np.max(f.T))
-    a_max.append(np.max(np.abs(np.gradient(f.velocity) / np.gradient(f.grid))))
-    print(f"MAX Temp {np.max(f.T)}")
-    if not np.isclose(np.max(f.T), temperature_limit_extinction):
-        # Flame is still burning, so proceed to next strain rate
-        n_last_burning = n
-        name = f"extinction/{n:04d}" 
-        names.append(name)
-        save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True)
-        print('Flame burning at alpha = {:8.4F}. Proceeding to the next iteration, '
-              'with delta_alpha = {}'.format(alpha[-1], delta_alpha))
-    elif ((T_max[-2] - T_max[-1] < delta_T_min) and (delta_alpha < delta_alpha_min)):
-        # If the temperature difference is too small and the minimum relative
-        # strain rate increase is reached, save the last, non-burning, solution
-        # to the output file and break the loop
-        name = f"extinction/{n:04d}" 
-        names.append(name)
-        save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True)
+    if solved:
+        t_max_val = float(np.max(f.T))
+        a_max_val = float(np.max(np.abs(np.gradient(f.velocity) / np.gradient(f.grid))))
+        T_max.append(t_max_val)
+        a_max.append(a_max_val)
+        print(f"MAX Temp {t_max_val}")
 
-        print('Flame extinguished at alpha = {0:8.4F}.'.format(alpha[-1]),
+        if not np.isclose(t_max_val, temperature_limit_extinction):
+            # Flame is still burning, so proceed to next strain rate
+            n_last_burning = n
+            name = f"extinction/{n:04d}"
+            names.append(name)
+            save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True)
+            print(f'Flame burning at alpha = {alpha[-1]:8.4f}. Proceeding, '
+                  f'delta_alpha = {delta_alpha}')
+            continue
+        else:
+            print(f"Flame extinguished (solved, T~ambient) at alpha = {alpha[-1]:8.4f}")
+    else:
+        # Solver failed — f is in undefined state; do NOT use it for T/a_max
+        print(f"Flame extinguished (solver failed: {failure_type}) at alpha = {alpha[-1]:8.4f}")
+
+    # --- Extinction handling (arrive here from both branches) ---
+    if delta_alpha < delta_alpha_min:
+        # Converged: step is refined to minimum, flame is out
+        name = f"extinction/{n:04d}"
+        names.append(name)
+        if solved:
+            save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True)
+        else:
+            print("  (not saving — solver failed, no valid solution)")
+        print(f'Flame extinguished at alpha = {alpha[-1]:8.4f}. '
               'Abortion criterion satisfied.')
         break
     else:
-        # Procedure if flame extinguished but abortion criterion is not satisfied
-        # Reduce relative strain rate increase
+        # Refine step and retry from last burning solution
         delta_alpha = delta_alpha / delta_alpha_factor
-        print('Flame extinguished at alpha = {0:8.4F}. Restoring alpha = {1:8.4F} and '
-              'trying delta_alpha = {2}'.format(
-                  alpha[-1], alpha[n_last_burning], delta_alpha))
-        # Restore last burning solution
-        print(f"Setting Initial gues {names[-1]}")
+        alpha.pop()  # discard the unphysical alpha entry
+        n = n-1
+        print(f'Flame extinguished at alpha = {alpha[-1]:8.4f} (discarded). '
+              f'Restoring alpha = {alpha[n_last_burning]:8.4f} and '
+              f'trying delta_alpha = {delta_alpha}')
+        print(f"Setting initial guess {names[-1]}")
         f.set_initial_guess(data=file_path, group=names[-1])
 
 

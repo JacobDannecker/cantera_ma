@@ -422,10 +422,12 @@ int Sim1D::refine(int loglevel)
         // loop over points in the current grid
         size_t npnow = d.nPoints();
         size_t nstart = znew.size();
+        map<size_t, size_t> oldToNew; // old index -> new index remapping
         for (size_t m = 0; m < npnow; m++) {
             if (r.keepPoint(m)) {
                 // add the current grid point to the new grid
                 znew.push_back(d.z(m));
+                oldToNew[m] = znew.size() - 1 - nstart;
 
                 // do the same for the solution at this point
                 for (size_t i = 0; i < comp; i++) {
@@ -455,6 +457,19 @@ int Sim1D::refine(int loglevel)
                 }
             }
         }
+
+        // Remap protected indices from old grid to new grid.
+        // Save m_protected AFTER analyze() to include indices added during
+        // the current refinement pass, ensuring persistent protection.
+        set<size_t> newProtected;
+        for (size_t oldIdx : r.protectedPoints()) {
+            auto it = oldToNew.find(oldIdx);
+            if (it != oldToNew.end()) {
+                newProtected.insert(it->second);
+            }
+        }
+        r.setProtected(newProtected);
+
         dsize.push_back(znew.size() - nstart);
     }
 
@@ -738,6 +753,28 @@ vector<double> Sim1D::getRefineCriteria(int dom)
        throw CanteraError("Sim1D::getRefineCriteria",
            "Must specify domain to get criteria from");
    }
+}
+
+void Sim1D::setEnthalpyRefinement(int dom, bool enable)
+{
+    if (dom >= 0) {
+        domain(dom).refiner().enableEnthalpyRefinement(enable);
+    } else {
+        for (size_t n = 0; n < nDomains(); n++) {
+            domain(n).refiner().enableEnthalpyRefinement(enable);
+        }
+    }
+}
+
+void Sim1D::setEnthalpyCurve(int dom, double curve)
+{
+    if (dom >= 0) {
+        domain(dom).refiner().setEnthalpyCurve(curve);
+    } else {
+        for (size_t n = 0; n < nDomains(); n++) {
+            domain(n).refiner().setEnthalpyCurve(curve);
+        }
+    }
 }
 
 void Sim1D::setGridMin(int dom, double gridmin)
