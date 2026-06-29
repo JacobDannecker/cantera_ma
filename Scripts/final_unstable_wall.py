@@ -33,8 +33,7 @@ fig_path = "Scripts/Data/unstable_Run2_test_final_Z0.7700.png"
 start_file = "Scripts/Data/Run2_final_Z0.7700.h5"
 h5_file = h5py.File(start_file, "r")
 keys = ["extinction/" + key for key in h5_file["extinction"].keys()]
-second_last_run = keys[-3]
-
+second_last_run = keys[-2]
 
 f.fuel_inlet.mdot = h5_file[second_last_run]["fuel_inlet"].attrs["mass-flux"]
 f.oxidizer_inlet.mdot = h5_file[second_last_run]["oxidizer_inlet"].attrs["mass-flux"]
@@ -53,14 +52,19 @@ wall_params = {
 
 z_stoich = ut.get_z_stoich(gas, wall_params, reaction_mechanism)
 #f.solve(auto=True, refine_grid=True)
-#ut.solve_with_wall(f, wall_params, name_fallback="initial", factor_last_working=1000, delta_T_max=1.0, loglevel=0)
 #f.set_initial_guess(data=file_path, group="initial")
-f.set_initial_guess(start_file, second_last_run)
-f.set_refine_criteria(ratio=3.0, slope=0.5, curve=0.5, prune=0.09, enthalpy=True, enthalpy_curve=0.5)
+#f.set_initial_guess(start_file, second_last_run)
 
+f.set_refine_criteria(ratio=3.0, slope=0.5, curve=0.05, prune=0.01, enthalpy=False, enthalpy_curve=0.05)
+
+ut.solve_with_wall(f, wall_params, name_fallback="initial", factor_last_working=1000, delta_T_max=0.5, loglevel=1)
 ut.save_with_attributes(f, file_path, "initial", wall_params, z_stoich, info=True)
 
 names = ["initial"]
+
+print(f.fuel_inlet.mdot)
+print(f.oxidizer_inlet.mdot)
+
 
 
 ##############################################################################
@@ -155,7 +159,7 @@ for i in range(n_max):
     try:
         #try:
         factor = 1000
-        factor_last_working = ut.solve_with_wall(f, wall_params, factor_last_working=factor, delta_T_max=1.0, loglevel=0, refine_grid=refine_grid, auto=False)
+        factor_last_working = ut.solve_with_wall(f, wall_params, factor_last_working=factor, delta_T_max=1, loglevel=1, refine_grid=refine_grid, auto=False)
         print(f"Factor last working: {factor_last_working}")
         #except BaseException as err:
         #    print("Try wihtout last_working_factor.=============================================")
@@ -183,7 +187,7 @@ for i in range(n_max):
         # next iteration
         factor = 1000
         if names:
-            f.set_initial_guess(file_path, group=names[-1])
+            #f.set_initial_guess(file_path, group=names[-1])
             print(f"Restor solution: {names[-1]} ")
         #refine_grid = False
         temperature_increment = 0.5 * temperature_increment

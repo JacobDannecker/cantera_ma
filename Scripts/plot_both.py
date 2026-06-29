@@ -6,11 +6,9 @@ from matplotlib import pyplot as plt
 from scipy import special
 import utils as ut
 
-file_path = f"Scripts/Data/Run2_final_Z0.7700.h5"
-#file_path = f"Scripts/Data/No32_test_final_Z0.4000.h5"
+file_path = f"Scripts/Data/unstable_No32_test_final_Z0.4000.h5"
+file_path_ex = f"Scripts/Data/No32_test_final_Z0.4000.h5"
 
-#file_path = f"Scripts/Data/Run2_final_Z0.7500.h5"
-#csv_path = f"Scripts/Data/stable_050.csv"
 
 
 reaction_mechanism = "h2o2.yaml"                                                
@@ -44,9 +42,11 @@ idx_O2 = f.gas.species_index("O2")
 idx_OH = f.gas.species_index("OH")                                              
 idx_H = f.gas.species_index("H")                                              
 idx_O = f.gas.species_index("O")                                              
+h5_file_ex = h5py.File(file_path_ex, "r")                                          
 h5_file = h5py.File(file_path, "r")                                          
-names = ["extinction/" + str(name)  for name in h5_file["extinction"].keys()][::]
-#names = [str(name)  for name in h5_file.keys()][::]
+
+names_ex = ["extinction/" + str(name)  for name in h5_file_ex["extinction"].keys()][::]
+names = [str(name)  for name in h5_file.keys()][::]
 names.append("initial")
 species_idx = f.gas.species_index("OH") 
 species_name = "OH"
@@ -54,11 +54,11 @@ species = []
 amax = []
 tmax = []
 
-for  name in names:                                                              
-    f.restore(file_path, name=name)                                             
-    idx = np.argmin(np.abs(f.mixture_fraction("H") - 0.77))
+for  name in names_ex:                                                              
+    f.restore(file_path_ex, name=name)                                             
+    idx = np.argmin(np.abs(f.mixture_fraction("H") - 0.44))
 
-    if (f.T[idx] - 300) < 1.5 and (f.mixture_fraction("H")[idx] - 0.77) < 0.2:
+    if (f.T[idx] - 300) < 1. and (f.mixture_fraction("H")[idx] - 0.44) < 0.01:
         print(f.mixture_fraction("H")[idx])
         amax.append(f.strain_rate("mean"))
         tmax.append(np.max(f.T))
@@ -72,6 +72,32 @@ for  name in names:
     ax[0].plot(f.mixture_fraction("H"), f.T, label=label)                       
     # Subplot 2  enthalpy                                                       
     ax[1].plot(f.mixture_fraction("H"), f.h, label=label)                       
+#    ax[2].plot(f.mixture_fraction("H"), f.equivalence_ratio, label=label)                       
+    # Sublots species                                                           
+    ax2[0].plot(f.mixture_fraction("H"), f.Y[idx_H2], label=label)              
+    ax2[1].plot(f.mixture_fraction("H"), f.Y[idx_O2], label=label)              
+    ax2[2].plot(f.mixture_fraction("H"), f.Y[idx_OH], label=label)              
+    ax2[3].plot(f.mixture_fraction("H"), f.Y[idx_O], label=label)              
+    ax2[4].plot(f.mixture_fraction("H"), f.Y[idx_H], label=label)              
+
+for  name in names:                                                              
+    f.restore(file_path, name=name)                                             
+    idx = np.argmin(np.abs(f.mixture_fraction("H") - 0.44))
+
+    if (f.T[idx] - 300) < 1. and (f.mixture_fraction("H")[idx] - 0.44) < 0.01:
+        print(f.mixture_fraction("H")[idx])
+        amax.append(f.strain_rate("mean"))
+        tmax.append(np.max(f.T))
+
+    label = name                                                                
+    idx_T_max = np.abs(f.T - np.max(f.T)).argmin()
+    species_T_max = f.Y[species_idx][:][idx_T_max]
+    species.append(species_T_max)
+
+    # Subplot 1 Temperature                                                     
+    ax[0].plot(f.mixture_fraction("H"), f.T, label=label, color='r')                       
+    # Subplot 2  enthalpy                                                       
+    ax[1].plot(f.mixture_fraction("H"), f.h, label=label, color='r')                       
 #    ax[2].plot(f.mixture_fraction("H"), f.equivalence_ratio, label=label)                       
     # Sublots species                                                           
     ax2[0].plot(f.mixture_fraction("H"), f.Y[idx_H2], label=label)              

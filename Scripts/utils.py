@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 import h5py
 from scipy import special
 import cantera as ct
+import time 
 
-def add_attributes(f, file_path, name, wall_params, z_stoich):
+def add_attributes(f, file_path, name, wall_params, z_stoich, runtime):
     z_array = f.mixture_fraction(wall_params["mix_frac"])
     h_mass_array = f.enthalpy_mass
     h_mole_array = f.enthalpy_mole
@@ -13,11 +14,13 @@ def add_attributes(f, file_path, name, wall_params, z_stoich):
     group_z = name + "/flame/z"
     group_h_mass = name + "/flame/h_mass"
     group_h_mole = name + "/flame/h_mole"
+    group_flame = name + "/flame"
     # Data
     hdf5_file.create_dataset(name=group_z, data=z_array)
     hdf5_file.create_dataset(name=group_h_mass, data=h_mass_array)
     hdf5_file.create_dataset(name=group_h_mole, data=h_mole_array)
     # Attributes
+    hdf5_file[group_flame].add_attr = "runtime"
     hdf5_file[group_z].add_attr = "mix_frac"
     hdf5_file[group_z].add_attr = "fuel"
     hdf5_file[group_z].add_attr = "oxidizer"
@@ -30,10 +33,15 @@ def add_attributes(f, file_path, name, wall_params, z_stoich):
     hdf5_file[group_z].attrs["basis"] = wall_params["basis"]
     hdf5_file[group_z].attrs["chi_st"] = chi_stoich(f, z_stoich)
     hdf5_file[group_z].attrs["z_wall"] = wall_params["Z_wall"]
+    if runtime:
+        hdf5_file[group_flame].attrs["runtime"]= runtime
+    else:
+        hdf5_file[group_flame].attrs["runtime"]= "None"
+
 
     hdf5_file.close()
 
-def save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True):
+def save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True, runtime=False):
     # Save state of flame to hdf5 file. Add relevant data.
     z_wall = wall_params["Z_wall"]
     if info:
@@ -41,7 +49,7 @@ def save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True):
         print(f"Solved at z_wall: {z_wall}")
         print("##############################################################")
     f.save(file_path, name=name, overwrite=True)
-    add_attributes(f, file_path, name, wall_params, z_stoich)
+    add_attributes(f, file_path, name, wall_params, z_stoich, runtime)
 
 def chi_stoich(f, z_stoich):
     a = np.mean(np.abs(np.gradient(f.velocity) / np.gradient(f.grid)))
@@ -86,7 +94,9 @@ def classify_failure(msg):
         return "unknown"
 
 def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1.,
-                    factor_last_working=False, factor_increase=2, loglevel=0, refine_grid=True, auto=True):
+                    factor_last_working=False, factor_increase=2, factor_decrease=0.9, loglevel=0, refine_grid=True, auto=True):
+    start_time = time.time()
+    f.max_grid_points = 2000                                                    
     error_counter = 0
     z_wall = wall_params["Z_wall"]
     delta_T_ok = False
@@ -119,7 +129,9 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1.,
                 print(f"Solution found at delta_T_wall: {delta_T_wall}")
                 print(f"Gridpoints: {f.grid.shape}")
                 factor_last_working = wall_params["factor"]
-                return factor_last_working
+                end_time = time.time()
+                runtime = end_time - start_time
+                return runtime, factor_last_working
 
         except ct.CanteraError as err:
             last_error_msg = str(err)
@@ -130,7 +142,7 @@ def solve_with_wall(f, wall_params, name_fallback="initial", delta_T_max=1.,
             if error_counter <= 3:
                 wall_params["factor"] /= factor_increase
                 if factor_increase > 1.2:
-                    factor_increase *= 0.9
+                    factor_increase *= factor_decrease
             else:
                 print("No solution found. Leaving solve_with_wall()")
                 failed = True
