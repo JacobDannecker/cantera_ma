@@ -147,11 +147,12 @@ def solve_with_wall(f, wall_params, delta_T_max=1.,
             print(f"Error count {error_counter}")
             print("======================Had an exception in solve_with_wall")
             if error_counter <= 3:
-                
-                wall_params["factor"] /= factor_increase
-                print(f"New factor {wall_params['factor']}")
-                if factor_increase > 1.2:
-                    factor_increase *= factor_decrease
+                pass
+                #wall_params["factor"] *= factor_increase
+                #print(f"New factor {wall_params['factor']}")
+                #if factor_increase > 1.2:
+                #    factor_increase *= factor_decrease
+
             else:
                 print("No solution found. Leaving solve_with_wall()")
                 failed = True

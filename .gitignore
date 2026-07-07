@@ -74,3 +74,6 @@ Scripts/.UnstableWall_2.py.swp
 Scripts/archiv/*
 Scripts/.test_build.py.swp
 Scripts/DataPlot/*
+Scripts/cantera_props.tex
+Scripts/.unstable_wall.py.swp
+Scripts/.stable_branch_altered_loop.py.swp

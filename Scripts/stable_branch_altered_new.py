@@ -41,12 +41,13 @@ exp_V_a = 1.
 exp_lam_a = 2.
 exp_mdot_a = 1. / 2.
 
-delta_alpha_min = 0.1
-delta_T_min = 1.
+delta_alpha_min = 0.01
+delta_T_min = 5.
 factor_last_working = 1000
+
 # Z_wall values to scan: from 1.0 down to 0.1115 in steps of 0.5
-Z_wall_values = np.arange(1.0, 0.1, -0.1)
-Z_wall_values = [0.4]
+Z_wall_values = np.arange(0.99, 0.1, -0.02)
+Z_wall_values = [0.2]
 print(Z_wall_values)
 for Z_wall_val in Z_wall_values:
     print(f"\n{'='*60}")
@@ -82,7 +83,7 @@ for Z_wall_val in Z_wall_values:
 
     # Output files with Z_wall in the name
     file_tag = f"Z{Z_wall_val:.4f}"
-    file_path = str(output_path / f"stable_{file_tag}.h5")
+    file_path = str(output_path / f"Run3_new_final_{file_tag}.h5")
 
     name = "initial"
     names = [name]
@@ -91,99 +92,101 @@ for Z_wall_val in Z_wall_values:
 
 
     f.set_initial_guess(data="Scripts/Data/enthalpy.h5", group="initial")
-#    f.restore("Scripts/Data/Run21_final_Z0.2000.h5", "extinction/0138")
+#    f.restore("Scripts/Data/Run25_final_Z0.2000.h5", "extinction/0139")
+#    factor_last_working = 7730941132800.0
+    new = False
 #    ut.save_with_attributes(f, file_path, name, wall_params, z_stoich_val, info=False)
+#    f.solve(refine_grid=False, auto=True)
+    refine_grid = True
+    auto = True
+    runtime, factor_last_working = ut.solve_with_wall(f, wall_params,
+                               factor_last_working=factor_last_working,
+                               delta_T_max=1.0, loglevel=0, refine_grid=refine_grid, auto=auto)
     
     # --- Extinction loop ---
     alpha = [1.]
-    delta_alpha = 5
+    delta_alpha = 1
     n = 0
     n_last_burning = 0
     T_max = [np.max(f.T)]
     a_max = [np.max(np.abs(np.gradient(f.velocity) / np.gradient(f.grid)))]
     refine_grid = True
-    auto = True
+    auto = False
+
     while True:
         n += 1
+
+        alpha.append(alpha[n_last_burning])
         alpha.append(alpha[n_last_burning] + delta_alpha)
         strain_factor = alpha[-1] / alpha[n_last_burning]
+        print(f"Strain factor: {strain_factor}")
         f.flame.grid *= strain_factor ** exp_d_a
         f.fuel_inlet.mdot *= strain_factor ** exp_mdot_a
         f.oxidizer_inlet.mdot *= strain_factor ** exp_mdot_a
         f.flame.set_values("velocity", f.flame.velocity * strain_factor ** exp_u_a)
         f.flame.set_values("spreadRate", f.flame.spread_rate * strain_factor ** exp_V_a)
         f.flame.set_values(
-            "Lambda", f.flame.radial_pressure_gradient * strain_factor ** exp_lam_a)
+        "Lambda", f.flame.radial_pressure_gradient * strain_factor ** exp_lam_a)
+
         solved = False
         failure_type = None
         try:
-            print(f"Before Solve f:{f.fuel_inlet.mdot} o:{f.oxidizer_inlet.mdot}")
-
+            print(f"Begin Solve, with f:{f.fuel_inlet.mdot} o:{f.oxidizer_inlet.mdot}, alpha: {alpha[-1]}")
             runtime, factor_last_working = ut.solve_with_wall(f, wall_params,
                                factor_last_working=factor_last_working,
                                delta_T_max=1.0, loglevel=0, refine_grid=refine_grid, auto=auto)
-            print(f"After Solve f:{f.fuel_inlet.mdot} o:{f.oxidizer_inlet.mdot}")
             solved = True
 
-        except (ut.SolveFailure, ct.CanteraError) as e:
-            #factor_last_working = 1000
-            failure_type = getattr(e, 'failure_type', ut.classify_failure(str(e)))
-            print(f"Error: Did not converge at n = {n}, type={failure_type}")
-
-        if solved:
-            refine_grid = True
             t_max_val = float(np.max(f.T))
             a_max_val = float(np.max(np.abs(np.gradient(f.velocity) / np.gradient(f.grid))))
             T_max.append(t_max_val)
             a_max.append(a_max_val)
             print(f"MAX Temp {t_max_val}")
-            #delta_alpha = 5 
-            if not np.isclose(t_max_val, temperature_limit_extinction):
-                n_last_burning = n
-                #if delta_alpha < initial_delta_alpha:
-                #    delta_alpha = initial_delta_alpha
-                name = f"extinction/{n:04d}"
-                names.append(name)
-                ut.save_with_attributes(f, file_path, name, wall_params, z_stoich_val, info=True, runtime=runtime)
-                print(f'Flame burning at alpha = {alpha[n_last_burning]:8.4f}. Proceeding, '
-                      f'delta_alpha = {delta_alpha}')
-                continue
-            else:
-                print(f"Flame extinguished (solved, T~ambient) at alpha = {alpha[-1]:8.4f}")
-                #break
-        else:
-            print(f"Flame extinguished (solver failed: {failure_type}) at alpha = {alpha[-1]:8.4f}")
-        
 
-        if (delta_alpha < delta_alpha_min): #and (T_max[-2] - T_max[-1] < delta_T_min)):
+        except (ut.SolveFailure, ct.CanteraError) as e:
+            failure_type = getattr(e, 'failure_type', ut.classify_failure(str(e)))
+            print(f"Error: Did not converge at n = {n}, type={failure_type}")
+
+
+        if solved and not np.isclose(t_max_val, temperature_limit_extinction, atol=5):
+            refine_grid = True
+
+            n_last_burning = n
             name = f"extinction/{n:04d}"
             names.append(name)
-            if solved:
-                ut.save_with_attributes(f, file_path, name, wall_params, z_stoich_val, info=True)
-            else:
-                print("  (not saving — solver failed, no valid solution)")
+            ut.save_with_attributes(f, file_path, name, wall_params, z_stoich_val, info=True, runtime=runtime)
+            print(f'Flame burning at alpha = {alpha[n_last_burning]:8.4f}. Proceeding, '
+                  f'delta_alpha = {delta_alpha}')
+            print("Flame solved and saved")
+
+            
+        elif solved and ((delta_alpha < delta_alpha_min) and (T_max[-2] - T_max[-1] < delta_T_min)):
             print(f'Flame extinguished at alpha = {alpha[-1]:8.4f}. '
-                  'Abortion criterion satisfied.')
-            break
-        else:
+                   'Abortion criterion satisfied.')
+            break 
+
+        elif not solved:
+            print("Failed !!!")
             auto = False
+            refine_grid = False
             delta_alpha *= 0.1
-            #refine_grid = False
-            #alpha.pop()
             n = n - 1
+            print(f"Setting delta_alpha to {delta_alpha}")
             print(f'Flame extinguished at alpha = {alpha[-1]:8.4f} (discarded). '
                   f'Restoring alpha = {alpha[n_last_burning]:8.4f} and '
                   f'trying delta_alpha = {delta_alpha}')
-            print(f"Setting initial guess {names[-1]}")
             name = f"extinction/{n_last_burning:04d}"
-            print(f"Before f:{f.fuel_inlet.mdot} o:{f.oxidizer_inlet.mdot}")
-            #f.set_initial_guess(data="Scripts/Data/enthalpy.h5", group="initial")
-            #f.restore("Scripts/Data/enthalpy.h5", "initial")
+            print(f"Setting initial guess {name}")
             f.restore(file_path, name)
-            #f.set_initial_guess(data=file_path, group=name)
-            print(f"After f:{f.fuel_inlet.mdot} o:{f.oxidizer_inlet.mdot}")
+
+        else: 
+            auto = False
+            delta_alpha *= 0.1
+            print(f"Flame solve, but extinguished, new delta_alpha = {delta_alpha}")
 
 
+
+           
     # --- Results for this Z_wall ---
     name = f"extinction/{n_last_burning:04d}"
     f.restore(file_path, name)

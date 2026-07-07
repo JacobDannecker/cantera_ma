@@ -4,12 +4,7 @@ from matplotlib import pyplot as plt
 import h5py
 
 
-file_list = [ "Scripts/Data/extinction_Z0.8000.h5", "Scripts/Data/extinction_Z0.7500.h5", "Scripts/Data/extinction_Z0.7000.h5", "Scripts/Data/extinction_Z0.6500.h5",
-             "Scripts/Data/extinction_Z0.6000.h5","Scripts/Data/extinction_Z0.5500.h5", "Scripts/Data/extinction_Z0.5000.h5", "Scripts/Data/extinction_Z0.4500.h5",
-"Scripts/Data/extinction_Z0.4000.h5", "Scripts/Data/extinction_Z0.4500.h5", "Scripts/Data/extinction_Z0.3000.h5", "Scripts/Data/extinction_Z0.2500.h5", 
-"Scripts/Data/extinction_Z0.2000.h5", "Scripts/Data/extinction_Z0.1500.h5", "Scripts/Data/extinction_Z0.1000.h5", "Scripts/Data/No5extinction_Z0.9000.h5", "Scripts/Data/unstable_No17.h5"]
-
-
+file_list = ["Scripts/Data/Run31_loop_Z1.0000.h5", "Scripts/Data/Run31_loop_Z0.9000.h5", "Scripts/Data/Run31_loop_Z0.8000.h5", "Scripts/Data/Run31_loop_Z0.7000.h5", "Scripts/Data/Run31_loop_Z0.6000.h5", "Scripts/Data/Run31_loop_Z0.5000.h5"] 
 for file in file_list:
     h5_file = h5py.File(file, "r")
     if file == "Scripts/Data/unstable_No17.h5":

@@ -41,12 +41,12 @@ exp_V_a = 1.
 exp_lam_a = 2.
 exp_mdot_a = 1. / 2.
 
-initial_delta_alpha = 0.1
+initial_delta_alpha = 1
 delta_alpha_min = 0.001
 factor_last_working = 1000
 # Z_wall values to scan: from 1.0 down to 0.1115 in steps of 0.5
 #Z_wall_values = np.arange(0.8, 0.75, -0.5)
-Z_wall_values = [0.38]
+Z_wall_values = [0.40]
 print(Z_wall_values)
 for Z_wall_val in Z_wall_values:
     print(f"\n{'='*60}")
@@ -57,8 +57,8 @@ for Z_wall_val in Z_wall_values:
     grid = np.linspace(0, width, 250)
     f = ct.CounterflowDiffusionFlame(gas, grid=grid)
     f.P = 1.e5
-    f.fuel_inlet.mdot = 18.33 #0.1
-    f.oxidizer_inlet.mdot = 3.66 #0.5
+    f.fuel_inlet.mdot = 0.1
+    f.oxidizer_inlet.mdot = 0.5
     f.fuel_inlet.X = "H2:1"
     f.oxidizer_inlet.X = "O2:1"
     f.fuel_inlet.T = 300
@@ -80,24 +80,23 @@ for Z_wall_val in Z_wall_values:
 
     z_stoich_val = ut.get_z_stoich(gas, wall_params, reaction_mechanism)
 
-    # Output files with Z_wall in the name
+    # Output files
     file_tag = f"Z{Z_wall_val:.4f}"
-    file_path = str(output_path / f"No9_test_final_{file_tag}.h5")
+    file_path = str(output_path / f"BugfixNo7_test_final_{file_tag}.h5")
 
     name = "extinction/0036"
     names = [name]
 
     temperature_limit_extinction = max(f.oxidizer_inlet.T, f.fuel_inlet.T)
 
-#    f.set_initial_guess(data="Scripts/Data/enthalpy.h5", group="initial")
-    f.set_initial_guess(data="Scripts/Data/No6extinction_Z0.7800.h5", group="extinction/0034")
-    print(f.fuel_inlet.mdot)
-    print(f.oxidizer_inlet.mdot)
+    f.restore("Scripts/Data/enthalpy.h5", name="initial")
+    print(f.fuel_inlet.mdot, f.oxidizer_inlet.mdot)
+#    f.restore("Scripts/Data/No6extinction_Z0.7800.h5", name="extinction/0034")
     ut.save_with_attributes(f, file_path, name, wall_params, z_stoich_val, info=True)
     f.max_grid_points = 2000
     # --- Extinction loop ---
-    alpha = [0.1]
-    delta_alpha = 0.01
+    alpha = [1.]
+    delta_alpha = 1.
     n = 0
     n_last_burning = 0
     T_max = [np.max(f.T)]
@@ -112,17 +111,17 @@ for Z_wall_val in Z_wall_values:
         f.flame.grid *= strain_factor ** exp_d_a
         f.fuel_inlet.mdot *= strain_factor ** exp_mdot_a
         f.oxidizer_inlet.mdot *= strain_factor ** exp_mdot_a
-        #f.flame.set_values("velocity", f.flame.velocity * strain_factor ** exp_u_a)
-        #f.flame.set_values("spreadRate", f.flame.spread_rate * strain_factor ** exp_V_a)
-        #f.flame.set_values(
-        #    "Lambda", f.flame.radial_pressure_gradient * strain_factor ** exp_lam_a)
+        f.flame.set_values("velocity", f.flame.velocity * strain_factor ** exp_u_a)
+        f.flame.set_values("spreadRate", f.flame.spread_rate * strain_factor ** exp_V_a)
+        f.flame.set_values(
+            "Lambda", f.flame.radial_pressure_gradient * strain_factor ** exp_lam_a)
 
         solved = False
         failure_type = None
         try:
-            factor_last_working = ut.solve_with_wall(f, wall_params, name_fallback=names[-1],
+            _, factor_last_working = ut.solve_with_wall(f, wall_params,
                                factor_last_working=factor_last_working,
-                               delta_T_max=1.0, loglevel=1, refine_grid=refine_grid, auto=True)
+                               delta_T_max=1.0, loglevel=0, refine_grid=refine_grid, auto=True)
             solved = True
         except (ut.SolveFailure, ct.CanteraError) as e:
             factor_last_working = 1000
@@ -138,7 +137,7 @@ for Z_wall_val in Z_wall_values:
             print(f"MAX Temp {t_max_val}")
             print(f"Grad amax {(a_max[-1] - a_max[-2])/ (T_max[-2]/T_max[-1])}")
             
-            if not np.isclose(t_max_val, temperature_limit_extinction):
+            if not np.isclose(t_max_val, temperature_limit_extinction, atol=5.0, rtol=0):
                 n_last_burning = n
                 #if delta_alpha < initial_delta_alpha:
                     #delta_alpha = initial_delta_alpha
@@ -164,15 +163,15 @@ for Z_wall_val in Z_wall_values:
                   'Abortion criterion satisfied.')
             break
         else:
-            delta_alpha *= 0.8 
+            delta_alpha /=50
             #refine_grid = False
             alpha.pop()
             n = n - 1
             print(f'Flame extinguished at alpha = {alpha[-1]:8.4f} (discarded). '
                   f'Restoring alpha = {alpha[n_last_burning]:8.4f} and '
                   f'trying delta_alpha = {delta_alpha}')
-            print(f"Setting initial guess {names[-1]}")
-            f.set_initial_guess(data=file_path, group=names[-1])
+            print(f"Restoring solution {names[-1]}")
+            f.restore(file_path, name=names[-1])
 
     # --- Results for this Z_wall ---
     name = f"extinction/{n_last_burning:04d}"

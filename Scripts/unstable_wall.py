@@ -7,7 +7,7 @@ import h5py
 import logging
 import sys
 import pandas as pd
-import utils as ut
+import utils_unstable as ut
 
 
 # Flame settings                                                            
@@ -24,17 +24,20 @@ f.oxidizer_inlet.T = 300
 f.transport_model = "unity-Lewis-number"
 
 # Save data in:
-file_path = "Scripts/Data/unstable_Run2_test_final_Z0.7700.h5"
-csv_path = "Scripts/Data/unstable_Run2_test_final_Z0.7700.csv"
-fig_path = "Scripts/Data/unstable_Run2_test_final_Z0.7700.png"
+file_path = "Scripts/Data/unstable_Run31_Z0.5000.h5"
+csv_path = "Scripts/Data/unstable_Run31_Z0.5000.csv"
+fig_path = "Scripts/Data/unstable_Run31_Z0.5000.png"
 # Initialize flame from enthalpy guess and solve with wall
 
 
-start_file = "Scripts/Data/Run2_final_Z0.7700.h5"
+start_file = "Scripts/Data/Run30_final_Z0.5000.h5"
 h5_file = h5py.File(start_file, "r")
 keys = ["extinction/" + key for key in h5_file["extinction"].keys()]
-second_last_run = keys[-3]
+second_last_run = keys[-1]
+first_run = keys[0]
 
+f.restore(start_file, first_run)
+a_max = strain_rate = f.strain_rate("max")
 
 f.fuel_inlet.mdot = h5_file[second_last_run]["fuel_inlet"].attrs["mass-flux"]
 f.oxidizer_inlet.mdot = h5_file[second_last_run]["oxidizer_inlet"].attrs["mass-flux"]
@@ -52,13 +55,13 @@ wall_params = {
 }
 
 z_stoich = ut.get_z_stoich(gas, wall_params, reaction_mechanism)
-#f.solve(auto=True, refine_grid=True)
-#ut.solve_with_wall(f, wall_params, name_fallback="initial", factor_last_working=1000, delta_T_max=1.0, loglevel=0)
-#f.set_initial_guess(data=file_path, group="initial")
+
+f.restore(start_file, second_last_run)
 f.set_initial_guess(start_file, second_last_run)
-f.set_refine_criteria(ratio=3.0, slope=0.5, curve=0.5, prune=0.09, enthalpy=True, enthalpy_curve=0.5)
+f.set_refine_criteria(ratio=3.0, slope=0.5, curve=0.05, prune=0.04, enthalpy=False, enthalpy_curve=0.5)
 
 ut.save_with_attributes(f, file_path, "initial", wall_params, z_stoich, info=True)
+
 
 names = ["initial"]
 
@@ -74,21 +77,21 @@ n_max = 500
 # failures early on, while using higher values on the unstable branch tend to help
 # with finding solutions where the peak temperature is very low.
 initial_spacing = 0.9
-unstable_spacing =  0.85
+unstable_spacing =  0.5
 
 # Amount to adjust temperature at the control point each step [K]
 temperature_increment = 20
 max_increment = 100
 
 # Try to keep T_max from changing more than this much each step [K]
-target_delta_T_max = 200
+target_delta_T_max = 100
 
 # Stop after this many successive errors
 max_error_count = 5
 error_count = 0
 
 # Stop after any failure if the strain rate has dropped to this fraction of the maximum
-strain_rate_tol = 0.01
+strain_rate_tol = 0.001
 
 f.two_point_control_enabled = True
 
@@ -96,17 +99,18 @@ f.two_point_control_enabled = True
 f.flame.set_bounds(spread_rate=(-1e-5, 1e20))
 f.max_time_step_count = 1000 
 T_max = max(f.T)
-a_max = strain_rate = f.strain_rate('max')
+#a_max = strain_rate = f.strain_rate('max')
 data = []  # integral output quantities for each step
 solved = False
-factor_last_working = 1000
+factor_last_working = 7730941132800.0
 refine_grid = True
+
 for i in range(n_max):
     print(f"i = {i}")
     #if strain_rate > 0.98 * a_max:
     #    spacing = initial_spacing
     #else:
-    spacing = 0.95
+    spacing = unstable_spacing
     control_temperature = np.min(f.T) + spacing*(np.max(f.T) - np.min(f.T))
 
     # Store the flame state in case the iteration fails and we need to roll back
@@ -153,16 +157,9 @@ for i in range(n_max):
         break
 
     try:
-        #try:
-        factor = 1000
-        factor_last_working = ut.solve_with_wall(f, wall_params, factor_last_working=factor, delta_T_max=1.0, loglevel=0, refine_grid=refine_grid, auto=False)
+        runtime, factor_last_working = ut.solve_with_wall(f, wall_params, factor_last_working=factor_last_working, 
+                                                 factor_increase=0.8, delta_T_max=1.0, loglevel=1, refine_grid=refine_grid, auto=False)
         print(f"Factor last working: {factor_last_working}")
-        #except BaseException as err:
-        #    print("Try wihtout last_working_factor.=============================================")
-        #    factor_last_working = solve_with_wall(f, wall_params, name_fallback=names[-1],factor_last_working=False, delta_T_max=1.0, loglevel=0)
-
-
-        #print("After solve with wall")
         if abs(max(f.T) - T_max) < 0.8 * target_delta_T_max:
             # Max temperature is changing slowly. Try a larger increment next step
             temperature_increment = min(temperature_increment + 3, max_increment)
@@ -178,18 +175,13 @@ for i in range(n_max):
             print('SUCCESS! Traversed unstable branch down to '
                         f'{100 * strain_rate / a_max:.2f}% of the maximum strain rate.')
             break
-
         # Restore the previous solution and try a smaller temperature increment for the
         # next iteration
-        factor = 1000
         if names:
             f.set_initial_guess(file_path, group=names[-1])
             print(f"Restor solution: {names[-1]} ")
         #refine_grid = False
         temperature_increment = 0.5 * temperature_increment
-       # if spacing > 0.6:
-       #     spacing *= 0.9
-       #     print(f"Spacing set to: {spacing}")
         error_count += 1
         print(f"Solver did not converge on iteration {i}. Trying again with "
                        f"dT = {temperature_increment:.2f}")

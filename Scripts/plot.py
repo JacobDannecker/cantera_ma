@@ -6,7 +6,8 @@ from matplotlib import pyplot as plt
 from scipy import special
 import utils as ut
 
-file_path = f"Scripts/Data/Run2_final_Z0.7700.h5"
+file_path = f"Scripts/Data/abcde.h5"
+
 #file_path = f"Scripts/Data/No32_test_final_Z0.4000.h5"
 
 #file_path = f"Scripts/Data/Run2_final_Z0.7500.h5"
@@ -41,13 +42,13 @@ fig3.suptitle(f"H2/O2 {file_path}")
                                                                                 
 idx_H2 = f.gas.species_index("H2")                                              
 idx_O2 = f.gas.species_index("O2")                                              
-idx_OH = f.gas.species_index("OH")                                              
+idx_OH = f.gas.species_index("H2O")                                              
 idx_H = f.gas.species_index("H")                                              
 idx_O = f.gas.species_index("O")                                              
 h5_file = h5py.File(file_path, "r")                                          
-names = ["extinction/" + str(name)  for name in h5_file["extinction"].keys()][::]
-#names = [str(name)  for name in h5_file.keys()][::]
-names.append("initial")
+#names = ["extinction/" + str(name)  for name in h5_file["extinction"].keys()][::]
+names = [str(name)  for name in h5_file.keys()][::]
+#names.append("initial")
 species_idx = f.gas.species_index("OH") 
 species_name = "OH"
 species = []
@@ -56,9 +57,9 @@ tmax = []
 
 for  name in names:                                                              
     f.restore(file_path, name=name)                                             
-    idx = np.argmin(np.abs(f.mixture_fraction("H") - 0.77))
+    idx = np.argmin(np.abs(f.mixture_fraction("H") - 0.50))
 
-    if (f.T[idx] - 300) < 1.5 and (f.mixture_fraction("H")[idx] - 0.77) < 0.2:
+    if (f.T[idx] - 300) < 5. and (f.mixture_fraction("H")[idx] - 0.50) < 0.01:
         print(f.mixture_fraction("H")[idx])
         amax.append(f.strain_rate("mean"))
         tmax.append(np.max(f.T))
@@ -95,7 +96,7 @@ ax[1].set_ylabel("h in  J/kg")
                                                                                 
 ax2[0].set_ylabel("H2")                                                         
 ax2[1].set_ylabel("O2")                                                         
-ax2[2].set_ylabel("OH")                                                         
+ax2[2].set_ylabel("H2O")                                                         
 ax2[3].set_ylabel("O")                                                         
 ax2[4].set_ylabel("H")                                                         
 
@@ -112,7 +113,7 @@ ax2[4].set_ylabel("H")
 #ax3[1].set_ylabel('Maximum Temperature [K]')
 #
 
-ax3.scatter(amax, tmax, marker="x", color="b")
+ax3.plot(amax, tmax, marker="x", color="b")
 ax3.set_xlabel("a_max")
 ax3.set_ylabel("T_max")
 plt.tight_layout()                                                              
