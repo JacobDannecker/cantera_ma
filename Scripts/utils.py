@@ -131,7 +131,7 @@ def solve_with_wall(f, wall_params, delta_T_max=1.,
                 strain_max = f.strain_rate("max")
                 delta_T_ok = True
                 print_c(f"Solved with \n m_f: {f.fuel_inlet.mdot}, \n m_o: {f.oxidizer_inlet.mdot}, \n delta_T_wall: {delta_T_wall}, \n n_grid: {f.grid.shape}")
-                print_m("\n strain_max: {strain_max}, \n T_max = {np.max(f.T)}")
+                print_m(f"\n strain_max: {strain_max}, \n T_max = {np.max(f.T)}")
                 print("##############################################################")
                 factor_last_working = wall_params["factor"]
                 end_time = time.time()
@@ -142,7 +142,7 @@ def solve_with_wall(f, wall_params, delta_T_max=1.,
             last_error_msg = str(err)
             print(err)
             error_counter += 1
-            print_r("Had an exception in solve_with_wall errors: {error_counter}")
+            print_r(f"Had an exception in solve_with_wall errors: {error_counter}")
             if error_counter <= 3:
                 if set_factor == True: 
                     pass
