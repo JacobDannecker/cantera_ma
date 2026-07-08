@@ -5,6 +5,7 @@ import h5py
 from scipy import special
 import cantera as ct
 import time
+from colorama import Fore, Back, Style
 
 def add_attributes(f, file_path, name, wall_params, z_stoich, runtime):
     z_array = f.mixture_fraction(wall_params["mix_frac"])
@@ -49,9 +50,8 @@ def save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True, r
     # Save state of flame to hdf5 file. Add relevant data.
     z_wall = wall_params["Z_wall"]
     if info:
-        print("\n##############################################################")
-        print(f"Solved at z_wall: {z_wall}")
-        print("##############################################################")
+        print_g(f"Solved at z_wall: {z_wall}")
+        print("##############################################################\n")
     f.save(file_path, name=name, overwrite=True)
     add_attributes(f, file_path, name, wall_params, z_stoich, runtime)
 
@@ -118,23 +118,21 @@ def solve_with_wall(f, wall_params, delta_T_max=1.,
                 wall_params["factor"] = min(
                     wall_params["factor"] * factor_increase, max_factor
                 )
-                print(f"Factor_increase: {factor_increase}")
-                print(f"Factor in else: {wall_params['factor']}")
                 if wall_params["factor"] >= max_factor:
                     raise SolveFailure("max factor", "Max factor reached.")
-
-            print(f"Facotor after else: {wall_params['factor']}")
-            print(f"Grid refinement: {refine_grid}")
+            
+            print(f"Before ut.solve mdot f, o : {f.fuel_inlet.mdot}, {f.oxidizer_inlet.mdot}")
+            print(f"Factor before ut.solve: {wall_params['factor']}")
+            print(f"Grid refinement status: {refine_grid}")
             f.flame.set_non_adiabatic_wall(wall_params)                     
             f.solve(loglevel=loglevel, refine_grid=refine_grid, auto=auto)                           
             delta_T_wall = get_delta_T(f, wall_params)
             if delta_T_wall < delta_T_max:
-                print(f"mdot f, o : {f.fuel_inlet.mdot}, {f.oxidizer_inlet.mdot}")
                 strain_max = f.strain_rate("max")
-                print(f"Strain max: {strain_max}")
                 delta_T_ok = True
-                print(f"Solution found at delta_T_wall: {delta_T_wall}")
-                print(f"Gridpoints: {f.grid.shape}")
+                print_c(f"Solved with \n m_f: {f.fuel_inlet.mdot}, \n m_o: {f.oxidizer_inlet.mdot}, \n delta_T_wall: {delta_T_wall}, \n n_grid: {f.grid.shape}")
+                print_m("\n strain_max: {strain_max}, \n T_max = {np.max(f.T)}")
+                print("##############################################################")
                 factor_last_working = wall_params["factor"]
                 end_time = time.time()
                 runtime = end_time - start_time
@@ -144,19 +142,18 @@ def solve_with_wall(f, wall_params, delta_T_max=1.,
             last_error_msg = str(err)
             print(err)
             error_counter += 1
-            print(f"Error count {error_counter}")
-            print("======================Had an exception in solve_with_wall")
+            print_r("Had an exception in solve_with_wall errors: {error_counter}")
             if error_counter <= 3:
                 if set_factor == True: 
                     pass
                 else:
                     wall_params["factor"] /= factor_increase
-                print(f"New factor {wall_params['factor']}")
+                print_y(f"New factor {wall_params['factor']}")
 
                 if factor_increase > 1.2:
                     factor_increase *= factor_decrease
             else:
-                print("No solution found. Leaving solve_with_wall()")
+                print_r("No solution found. Leaving solve_with_wall()")
                 failed = True
 
     if failed:
@@ -178,8 +175,20 @@ def runtime(func):
 
 
 
+def print_r(a):
+    print(Fore.RED + a + Style.RESET_ALL)
 
+def print_g(a):
+    print(Fore.GREEN + a + Style.RESET_ALL)
 
+def print_c(a):
+    print(Fore.CYAN + a + Style.RESET_ALL)
+
+def print_y(a):
+    print(Fore.YELLOW + a + Style.RESET_ALL)
+
+def print_m(a):
+    print(Fore.MAGENTA + a + Style.RESET_ALL)
 
 
 

@@ -22,7 +22,7 @@ f.fuel_inlet.T = 300
 f.oxidizer_inlet.T = 300
 
 # Save data in:
-file_path = "Data/unstable_temp_change_Z0.5000.h5"
+file_path = "Data/unstable_temp_change_3_lower_step_Z0.5000.h5"
 
 
 # Initialize
@@ -74,11 +74,11 @@ initial_spacing = 0.6
 unstable_spacing =  0.95
 
 # Amount to adjust temperature at the control point each step [K]
-temperature_increment = 100
+temperature_increment = 50
 max_increment = 100
 
 # Try to keep T_max from changing more than this much each step [K]
-target_delta_T_max = 20
+target_delta_T_max = 10.
 
 # Stop after this many successive errors
 max_error_count = 5
