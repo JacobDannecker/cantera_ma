@@ -24,7 +24,7 @@ import h5py
 from scipy import special
 import cantera as ct
 import utils as ut
-
+from matplotlib import pyplot as plt
 
 
 # Flame settings (shared across all Z_wall runs)
@@ -44,9 +44,9 @@ exp_mdot_a = 1. / 2.
 delta_alpha_min = 0.001
 delta_T_min = 1.
 factor_last_working = 1000
-
-#Z_wall_values = np.arange(1.0, 0.1, -0.1)
-Z_wall_values = [0.5]
+# Z_wall values to scan: from 1.0 down to 0.1115 in steps of 0.5
+Z_wall_values = np.arange(1.0, 0.1, -0.1)
+Z_wall_values = [0.9]
 
 print(Z_wall_values)
 
@@ -66,8 +66,8 @@ for Z_wall_val in Z_wall_values:
     f.fuel_inlet.T = 300
     f.oxidizer_inlet.T = 300
     f.transport_model = "unity-Lewis-number"
-    f.set_refine_criteria(ratio=3, slope=0.5, curve=0.5, prune=0.04,
-                          enthalpy=False, enthalpy_curve=0.5)
+    f.set_refine_criteria(ratio=3, slope=0.5, curve=0.5, prune=0.03,
+                          enthalpy=False, enthalpy_curve=0.05)
 
     # Wall parameters for this run
     wall_params = {
@@ -84,7 +84,7 @@ for Z_wall_val in Z_wall_values:
 
     # Output files with Z_wall in the name
     file_tag = f"Z{Z_wall_val:.4f}"
-    file_path = str(output_path / f"higher_ref_{file_tag}.h5")
+    file_path = str(output_path / f"stable_{file_tag}.h5")
 
     name = "initial"
     names = [name]
@@ -92,15 +92,19 @@ for Z_wall_val in Z_wall_values:
     temperature_limit_extinction = max(f.oxidizer_inlet.T, f.fuel_inlet.T)
 
 
-    f.set_initial_guess(data="Data/initial.h5", group="initial")
+    f.set_initial_guess(data="Scripts/initial.h5", group="initial")
 
     # Start from existitng solution
-    f.restore("Data/stable_Z0.8000.h5", "extinction/0223")
-    factor_last_working = 47921999905593.45
-    delta_alpha = 0.0005 
+    #f.restore("Data/stable_Z0.9000.h5", "extinction/0005")
+    #factor_last_working = 262144000
+    #delta_alpha = 0.00005 
+    #delta_alpha_min = 0.001
+    #f.fuel_inlet.mdot = 0.1
+    #f.oxidizer_inlet.mdot = 0.5
+
     # --- Extinction loop ---
     alpha = [1.]
-    #delta_alpha = 5
+    delta_alpha = 5
     n = 0
     n_last_burning = 0
     T_max = [np.max(f.T)]
@@ -112,7 +116,7 @@ for Z_wall_val in Z_wall_values:
         alpha.append(alpha[n_last_burning] + delta_alpha)
         print(f'Proceeding, delta_alpha = {delta_alpha}')
         strain_factor = alpha[-1] / alpha[n_last_burning]
-        f.flame.grid *= strain_factor ** exp_d_a
+        #f.flame.grid *= strain_factor ** exp_d_a
         f.fuel_inlet.mdot *= strain_factor ** exp_mdot_a
         f.oxidizer_inlet.mdot *= strain_factor ** exp_mdot_a
         f.flame.set_values("velocity", f.flame.velocity * strain_factor ** exp_u_a)
@@ -124,7 +128,7 @@ for Z_wall_val in Z_wall_values:
         try:
             runtime, factor_last_working = ut.solve_with_wall(f, wall_params,
                                factor_last_working=factor_last_working,
-                               delta_T_max=1.0, loglevel=0, refine_grid=refine_grid, auto=auto)
+                               delta_T_max=0.2, loglevel=0, refine_grid=refine_grid, auto=auto)
             solved = True
 
         except (ut.SolveFailure, ct.CanteraError) as e:

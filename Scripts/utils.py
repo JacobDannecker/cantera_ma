@@ -100,7 +100,7 @@ def classify_failure(msg):
 def solve_with_wall(f, wall_params, delta_T_max=1.,
                     factor_last_working=False, factor_increase=2, factor_decrease=0.9, loglevel=0, refine_grid=True, auto=True):
     start_time = time.time()
-    f.max_grid_points = 4000                                                    
+    f.max_grid_points = 6000                                                    
     error_counter = 0
     z_wall = wall_params["Z_wall"]
     delta_T_ok = False

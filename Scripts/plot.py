@@ -6,7 +6,9 @@ from matplotlib import pyplot as plt
 from scipy import special
 import utils as ut
 
-file_list = ["Data/unstable_Z0.5000.h5", "Data/stable_Z0.5000.h5"]
+files = ["stable_Z0.9000.h5"]
+path = "Scripts/Data/"
+file_list = [path + file for file in files]
 
 plt.style.use("seaborn-v0_8-bright")
 
@@ -72,8 +74,11 @@ for file in file_list:
         ax2[3].plot(f.mixture_fraction("H"), f.Y[idx_O], label=label)              
         ax2[4].plot(f.mixture_fraction("H"), f.Y[idx_H], label=label)              
 
-    ax3.plot(amax, tmax, marker="x", label=str(file))
-                                                                                
+    idx = np.argsort(amax)
+    amax = np.array(amax)[idx]
+    tmax = np.array(tmax)[idx]
+
+    ax3.scatter(amax, tmax, marker="x", label=str(file))
 for a in ax:                                                                    
     a.grid()                                                                    
     a.legend()                                                                  

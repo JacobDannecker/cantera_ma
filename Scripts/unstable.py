@@ -22,11 +22,11 @@ f.fuel_inlet.T = 300
 f.oxidizer_inlet.T = 300
 
 # Save data in:
-file_path = "Data/unstable_temp_change_3_lower_step_Z0.5000.h5"
+file_path = "Scripts/Data/stable_Z0.9000.h5"
 
 
 # Initialize
-start_file = "Data/stable_Z0.5000.h5"
+start_file = "Data/even_higher_ref_2_Z0.6000.h5"
 h5_file = h5py.File(start_file, "r")
 keys = ["extinction/" + key for key in h5_file["extinction"].keys()]
 
@@ -74,7 +74,7 @@ initial_spacing = 0.6
 unstable_spacing =  0.95
 
 # Amount to adjust temperature at the control point each step [K]
-temperature_increment = 50
+temperature_increment = 100
 max_increment = 100
 
 # Try to keep T_max from changing more than this much each step [K]
@@ -99,7 +99,7 @@ data = []  # integral output quantities for each step
 solved = False
 
 factor_last_working = wall_params["factor"]
-refine_grid = False
+refine_grid = True
 auto = False
 
 for i in range(n_max):
@@ -156,6 +156,7 @@ for i in range(n_max):
         solved = True
         error_count = 0
     except (ut.SolveFailure, ct.CanteraError) as err:
+        solved = False
         print(err)
         if strain_rate / a_max < strain_rate_tol:
             print('SUCCESS! Traversed unstable branch down to '
@@ -169,32 +170,33 @@ for i in range(n_max):
         print(f"Did not converge on iteration {i}. New dT = {temperature_increment:.2f}")
 
 
-    print(f"Saving on iteration{i}")
-    name = f"iteration{i}"
-    ut.save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True)
+    if solved:
+        print(f"Saving on iteration{i}")
+        name = f"iteration{i}"
+        ut.save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True)
 
-    # Collect output stats
-    T_max = max(f.T)
-    T_mid = 0.5 * (min(f.T) + max(f.T))
-    s = np.where(f.T > T_mid)[0][[0,-1]]
-    width = f.grid[s[1]] - f.grid[s[0]]
-    strain_rate = f.strain_rate('max')
-    a_max = max(strain_rate, a_max)
+        # Collect output stats
+        T_max = max(f.T)
+        T_mid = 0.5 * (min(f.T) + max(f.T))
+        s = np.where(f.T > T_mid)[0][[0,-1]]
+        width = f.grid[s[1]] - f.grid[s[0]]
+        strain_rate = f.strain_rate('max')
+        a_max = max(strain_rate, a_max)
 
-    data.append({
-        'T_max': max(f.T),
-        'strain_rate': strain_rate,
-        'heat_release_rate': trapezoid(f.heat_release_rate, f.grid),
-        'n_points': len(f.grid),
-        'flame_width': width,
-        'Tc_increment': temperature_increment,
-        'time_steps': sum(f.time_step_stats),
-        'eval_count': sum(f.eval_count_stats),
-        'cpu_time': sum(f.jacobian_time_stats + f.eval_time_stats),
-        'errors': error_count
-    })
-    
-    df = pd.DataFrame.from_records(data)
+        data.append({
+            'T_max': max(f.T),
+            'strain_rate': strain_rate,
+            'heat_release_rate': trapezoid(f.heat_release_rate, f.grid),
+            'n_points': len(f.grid),
+            'flame_width': width,
+            'Tc_increment': temperature_increment,
+            'time_steps': sum(f.time_step_stats),
+            'eval_count': sum(f.eval_count_stats),
+            'cpu_time': sum(f.jacobian_time_stats + f.eval_time_stats),
+            'errors': error_count
+        })
+        
+        df = pd.DataFrame.from_records(data)
 
     if error_count >= max_error_count:
         print(f'FAILURE! Stopping after {error_count} successive solver '
