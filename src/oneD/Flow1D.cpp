@@ -690,7 +690,7 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
                 		rsd[index(c_offset_T, j)] -=  pow((T(x, j) - m_T_wall), 4);// *  pow(T(x, j), 4); //* 1/(1-Z) * pow((T(x, j) - m_T_wall), 4);
 			}
 			//m_factor * pow((T(x, j) - m_T_wall), 4);
-			sink = m_factor * (T(x, j) - m_T_wall); //*  pow(T(x, j), 4);
+			sink = (m_factor * (T(x, j) - m_T_wall)) * m_factor; //*  pow(T(x, j), 4);
 	//		writelog("Gridpoint: {}, Z: {}, T(x,j) - m_T_wall: {} factor: {}, sinktotal: {}\n", j, Z, (T(x,j) - m_T_wall), m_factor, sink);
             }}
 
