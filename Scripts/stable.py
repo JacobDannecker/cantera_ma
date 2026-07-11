@@ -116,7 +116,7 @@ for Z_wall_val in Z_wall_values:
         alpha.append(alpha[n_last_burning] + delta_alpha)
         print(f'Proceeding, delta_alpha = {delta_alpha}')
         strain_factor = alpha[-1] / alpha[n_last_burning]
-        #f.flame.grid *= strain_factor ** exp_d_a
+        f.flame.grid *= strain_factor ** exp_d_a
         f.fuel_inlet.mdot *= strain_factor ** exp_mdot_a
         f.oxidizer_inlet.mdot *= strain_factor ** exp_mdot_a
         f.flame.set_values("velocity", f.flame.velocity * strain_factor ** exp_u_a)
