@@ -77,3 +77,4 @@ Scripts/DataPlot/*
 Scripts/cantera_props.tex
 Scripts/.unstable_wall.py.swp
 Scripts/.stable_branch_altered_loop.py.swp
+Data/*
