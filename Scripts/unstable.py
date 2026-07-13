@@ -22,7 +22,7 @@ f.fuel_inlet.T = 300
 f.oxidizer_inlet.T = 300
 
 # Save data in:
-file_path = "Scripts/Data/stable_Z0.9000.h5"
+file_path = "Data/unstable_refine_2_Z0.6000.h5"
 
 
 # Initialize

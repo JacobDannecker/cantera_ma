@@ -46,7 +46,7 @@ delta_T_min = 1.
 factor_last_working = 1000
 # Z_wall values to scan: from 1.0 down to 0.1115 in steps of 0.5
 Z_wall_values = np.arange(1.0, 0.1, -0.1)
-Z_wall_values = [0.9]
+Z_wall_values = [0.6]
 
 print(Z_wall_values)
 
@@ -66,7 +66,7 @@ for Z_wall_val in Z_wall_values:
     f.fuel_inlet.T = 300
     f.oxidizer_inlet.T = 300
     f.transport_model = "unity-Lewis-number"
-    f.set_refine_criteria(ratio=3, slope=0.5, curve=0.5, prune=0.03,
+    f.set_refine_criteria(ratio=3, slope=0.5, curve=0.05, prune=0.03,
                           enthalpy=False, enthalpy_curve=0.05)
 
     # Wall parameters for this run
@@ -92,7 +92,7 @@ for Z_wall_val in Z_wall_values:
     temperature_limit_extinction = max(f.oxidizer_inlet.T, f.fuel_inlet.T)
 
 
-    f.set_initial_guess(data="Scripts/initial.h5", group="initial")
+    f.set_initial_guess(data="initial.h5", group="initial")
 
     # Start from existitng solution
     #f.restore("Data/stable_Z0.9000.h5", "extinction/0005")
@@ -110,7 +110,7 @@ for Z_wall_val in Z_wall_values:
     T_max = [np.max(f.T)]
     a_max = [np.max(np.abs(np.gradient(f.velocity) / np.gradient(f.grid)))]
     refine_grid = True
-    auto = True
+    auto = False
     while True:
         n += 1
         alpha.append(alpha[n_last_burning] + delta_alpha)
@@ -128,7 +128,7 @@ for Z_wall_val in Z_wall_values:
         try:
             runtime, factor_last_working = ut.solve_with_wall(f, wall_params,
                                factor_last_working=factor_last_working,
-                               delta_T_max=0.2, loglevel=0, refine_grid=refine_grid, auto=auto)
+                               delta_T_max=1., loglevel=0, factor_increase=2., refine_grid=refine_grid, auto=auto)
             solved = True
 
         except (ut.SolveFailure, ct.CanteraError) as e:
@@ -171,7 +171,7 @@ for Z_wall_val in Z_wall_values:
         else:
             auto = False
             delta_alpha *= 0.5
-            #refine_grid = False
+            refine_grid = False
             #alpha.pop()
             n = n - 1
             print(f'Flame extinguished at alpha = {alpha[-1]:8.4f} (discarded). '
