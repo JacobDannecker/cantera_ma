@@ -660,7 +660,6 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
     size_t j0 = std::max<size_t>(jmin, 1);
     size_t j1 = std::min(jmax, m_points-2);
     
-    //factor = pow((1-m_Z_wall), 4) * m_factor;
 
     for (size_t j = j0; j <= j1; j++) {
         if (m_do_energy[j]) {
@@ -684,14 +683,12 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
 		double sink = 0;
             	if (Z >= m_Z_wall) {
 			if (m_factor > 1){
-                		rsd[index(c_offset_T, j)] -=  m_factor * (T(x, j) - m_T_wall);// *  pow(T(x, j), 4); //* 1/(1-Z) * pow((T(x, j) - m_T_wall), 4);
+                		rsd[index(c_offset_T, j)] -=  m_factor * (T(x, j) - m_T_wall);
 			}
 			else {
-                		rsd[index(c_offset_T, j)] -=  pow((T(x, j) - m_T_wall), 4);// *  pow(T(x, j), 4); //* 1/(1-Z) * pow((T(x, j) - m_T_wall), 4);
+                		rsd[index(c_offset_T, j)] -=  pow((T(x, j) - m_T_wall), 4);
 			}
-			//m_factor * pow((T(x, j) - m_T_wall), 4);
-			sink = (m_factor * (T(x, j) - m_T_wall)) * m_factor * m_factor; //*  pow(T(x, j), 4);
-	//		writelog("Gridpoint: {}, Z: {}, T(x,j) - m_T_wall: {} factor: {}, sinktotal: {}\n", j, Z, (T(x,j) - m_T_wall), m_factor, sink);
+			sink = (m_factor * (T(x, j) - m_T_wall)) * m_factor * m_factor; 
             }}
 
 
