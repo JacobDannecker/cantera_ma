@@ -63,10 +63,20 @@ def chi_stoich(f, z_stoich):
     return chi_stoich
 
 def get_delta_T(f, wall_params):
-    # Returns True if delta_T smaller than delta_T_max else reurns False
-    idx_wall = np.abs(f.mixture_fraction(wall_params["mix_frac"]) - wall_params["Z_wall"]).argmin()
-    delta_T_wall =  f.T[idx_wall] - wall_params["T_wall"]
-    return delta_T_wall
+    # Worst-case (largest) remaining temperature deviation from T_wall among
+    # grid points actually inside the wall's influence (Z >= Z_wall). Using
+    # only the single nearest-to-Z_wall point instead can pick a point just
+    # outside a narrow blending window (e.g. Z_wall close to 1), where the
+    # sink has no effect and increasing "factor" can never converge it.
+    Z = f.mixture_fraction(wall_params["mix_frac"])
+    T = f.T
+    mask = Z >= wall_params["Z_wall"]
+    if not np.any(mask):
+        # No point currently classified as wall-affected; fall back to the
+        # nearest point as the best available proxy.
+        idx_wall = np.abs(Z - wall_params["Z_wall"]).argmin()
+        return f.T[idx_wall] - wall_params["T_wall"]
+    return np.max(T[mask] - wall_params["T_wall"])
 
 def get_z_stoich(gas, wall_params, reaction_yaml):
     fuel = wall_params["fuel"]
@@ -98,71 +108,118 @@ def classify_failure(msg):
     else:
         return "unknown"
 
-def solve_with_wall(f, wall_params, delta_T_max=1.,
-                    factor_last_working=False, factor_increase=2, factor_decrease=0.9, loglevel=0, refine_grid=True, auto=True):
-    start_time = time.time()
-    f.max_grid_points = 10000                                                    
-    error_counter = 0
-    z_wall = wall_params["Z_wall"]
-    delta_T_ok = False
-    failed = False
-    wall_params["factor"] = 100.0
-    max_factor = 1e19
-    set_factor = False
-    last_error_msg = ""
-    while not delta_T_ok and not failed:
-        try:
-            if factor_last_working and not set_factor:
-                wall_params["factor"] = factor_last_working
-                set_factor = True
+#: Cold-start factor seed used when no factor_last_working is supplied.
+DEFAULT_FACTOR_SEED = 1e6
+
+_MAX_LOG_STEP = np.log(10.0)   # cap a single secant step to 10x in factor
+_MIN_LOG_STEP = np.log(1.05)   # minimum forward progress per secant step
+
+def _next_factor(history, current_factor, factor_increase, delta_T_max, max_factor):
+    """Propose the next wall 'factor' via a bounded secant step on
+    ln(factor) targeting delta_T_wall == delta_T_max, given the
+    (ln(factor), delta_T_wall) history tried so far. Falls back to geometric
+    doubling when there's not enough history or the secant estimate isn't
+    trustworthy (non-finite, or pointing the wrong way)."""
+    if len(history) < 2:
+        next_factor = current_factor * factor_increase
+    else:
+        (x0, y0), (x1, y1) = history[-2], history[-1]
+        y0 -= delta_T_max
+        y1 -= delta_T_max
+        if y1 == y0 or not np.isfinite(y0) or not np.isfinite(y1):
+            next_factor = current_factor * factor_increase
+        else:
+            step = x1 - y1 * (x1 - x0) / (y1 - y0) - x1
+            if not np.isfinite(step) or step <= 0:
+                next_factor = current_factor * factor_increase
             else:
-                wall_params["factor"] = min(
-                    wall_params["factor"] * factor_increase, max_factor
-                )
-                if wall_params["factor"] >= max_factor:
-                    raise SolveFailure("max factor", "Max factor reached.")
-            
-            print(f"Before ut.solve mdot f, o : {f.fuel_inlet.mdot}, {f.oxidizer_inlet.mdot}")
-            print(f"Factor before ut.solve: {wall_params['factor']}")
+                step = min(max(step, _MIN_LOG_STEP), _MAX_LOG_STEP)
+                next_factor = np.exp(x1 + step)
+    return min(next_factor, max_factor)
+
+def solve_with_wall(f, wall_params, delta_T_max=1., factor_last_working=False,
+                    factor_seed=DEFAULT_FACTOR_SEED, factor_increase=2,
+                    factor_decrease=0.9, max_plain_errors=3, max_auto_errors=2,
+                    loglevel=0, refine_grid=True, auto=False):
+    """Solve with the permeable wall active, searching for the smallest
+    'factor' (sink stiffness) that pulls delta_T_wall below delta_T_max: a
+    secant search on ln(factor), escalating to auto=True after repeated
+    plain-solve failures.
+
+    :return: (runtime, factor_last_working)
+    :raises SolveFailure: if no converged solution is found.
+    """
+    start_time = time.time()
+    f.max_grid_points = 10000
+    max_factor = 1e19
+
+    wall_params["factor"] = factor_last_working if factor_last_working else factor_seed
+
+    history = []  # (ln(factor), delta_T_wall) pairs tried at this step
+    plain_errors = 0
+    auto_errors = 0
+    use_auto = auto
+    last_error_msg = ""
+
+    while True:
+        try:
+            print(f"Before solve_with_wall mdot f, o : {f.fuel_inlet.mdot}, {f.oxidizer_inlet.mdot}")
+            print(f"Factor before solve: {wall_params['factor']} (auto={use_auto})")
             print(f"Grid refinement status: {refine_grid}")
             print(f"Gridpoints: {f.grid.shape}")
-            f.flame.set_non_adiabatic_wall(wall_params)                     
-            f.solve(loglevel=loglevel, refine_grid=refine_grid, auto=auto)                           
+
+            f.flame.set_non_adiabatic_wall(wall_params)
+            f.solve(loglevel=loglevel, refine_grid=refine_grid, auto=use_auto)
             delta_T_wall = get_delta_T(f, wall_params)
             print_c(f"Delta T wall: {delta_T_wall}")
+            history.append((np.log(wall_params["factor"]), delta_T_wall))
+
             if delta_T_wall < delta_T_max:
                 strain_max = f.strain_rate("max")
-                delta_T_ok = True
-                print_c(f"Solved with \n m_f: {f.fuel_inlet.mdot}, \n m_o: {f.oxidizer_inlet.mdot}, \n delta_T_wall: {delta_T_wall}, \n n_grid: {f.grid.shape}")
+                print_c(f"Solved with \n m_f: {f.fuel_inlet.mdot}, \n m_o: {f.oxidizer_inlet.mdot}, "
+                        f"\n delta_T_wall: {delta_T_wall}, \n n_grid: {f.grid.shape}")
                 print_m(f"\n strain_max: {strain_max}, \n T_max = {np.max(f.T)}")
-                factor_last_working = wall_params["factor"]
-                end_time = time.time()
-                runtime = end_time - start_time
-                return runtime, factor_last_working
+                runtime = time.time() - start_time
+                return runtime, wall_params["factor"]
+
+            # A successful (if insufficiently strong) solve resets the
+            # plain-solve error streak and drops back to the caller's auto
+            # setting; if factor is already pinned at its cap, further
+            # increases can't help, so stop instead of looping forever.
+            if wall_params["factor"] >= max_factor:
+                raise SolveFailure("max factor",
+                    f"Reached max factor ({max_factor:.3g}) without reaching "
+                    f"delta_T_max={delta_T_max} (stuck at delta_T_wall="
+                    f"{delta_T_wall:.4g}).")
+            plain_errors = 0
+            use_auto = auto
+            wall_params["factor"] = _next_factor(
+                history, wall_params["factor"], factor_increase, delta_T_max, max_factor)
 
         except ct.CanteraError as err:
             last_error_msg = str(err)
             print(err)
-            error_counter += 1
-            print_r(f"Had an exception in solve_with_wall errors: {error_counter}")
-            if error_counter <= 3:
-                if set_factor == True: 
-                    pass
-                else:
-                    wall_params["factor"] /= factor_increase
-                print_y(f"New factor {wall_params['factor']}")
 
-                if factor_increase > 1.2:
-                    factor_increase *= factor_decrease
+            if not use_auto and plain_errors < max_plain_errors:
+                plain_errors += 1
+                wall_params["factor"] /= factor_increase
+                factor_increase = max(factor_increase * factor_decrease, 1.01)
+                print_y(f"Plain solve failed ({plain_errors}/{max_plain_errors}). "
+                        f"New factor {wall_params['factor']}")
+            elif auto_errors < max_auto_errors:
+                auto_errors += 1
+                use_auto = True
+                print_y(f"Falling back to auto continuation "
+                        f"({auto_errors}/{max_auto_errors}) at factor "
+                        f"{wall_params['factor']}")
             else:
-                print_r("No solution found. Leaving solve_with_wall()")
-                failed = True
+                failure_type = classify_failure(last_error_msg)
+                raise SolveFailure(failure_type,
+                    f"Failed solve_with_wall() at factor={wall_params['factor']:.4g}: "
+                    f"{last_error_msg}") from err
 
-    if failed:
-        failure_type = classify_failure(last_error_msg)
-        raise SolveFailure(failure_type,
-            f"Failed solve_with_wall() at factor={wall_params['factor']:.1f}: "
-            f"{last_error_msg}")
+            if wall_params["factor"] >= max_factor:
+                raise SolveFailure("max factor", "Max factor reached.") from err
 
 
 def runtime(func):

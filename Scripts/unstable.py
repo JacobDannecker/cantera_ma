@@ -1,36 +1,62 @@
-import numpy as np                                                              
-import cantera as ct                                                            
-from scipy import special                                                       
-from matplotlib import pyplot as plt                                            
-import time                                                                     
+# This file is part of Cantera. See License.txt in the top-level directory or
+# at https://cantera.org/license.txt for license and copyright information.
+
+"""
+Unstable branch continuation
+=============================
+
+Traces the unstable branch of the S-curve via two-point control, starting
+from stable.py's own extinction-point output so it continues from exactly
+where the strain-rate sweep left off.
+
+Requires: cantera >= 3.2, matplotlib >= 2.0
+
+.. tags:: Python, combustion, 1D flow, diffusion flame, strained flame,
+          unstable branch, two-point control
+"""
+
+import numpy as np
+import cantera as ct
 import h5py
-import logging
-import sys
 import pandas as pd
 import utils as ut
+from matplotlib import pyplot as plt
 
-# Flame settings                                                            
-reaction_mechanism = "h2o2.yaml"                                            
-gas = ct.Solution(reaction_mechanism)                                       
-width = 18e-3                                                               
-grid = np.linspace(0, width, 300)                                           
-f = ct.CounterflowDiffusionFlame(gas, grid=grid)                            
-f.P = 1.e5                                                                  
+# Flame settings
+reaction_mechanism = "h2o2.yaml"
+gas = ct.Solution(reaction_mechanism)
+width = 18e-3
+grid = np.linspace(0, width, 300)
+f = ct.CounterflowDiffusionFlame(gas, grid=grid)
+f.P = 1.e5
 f.fuel_inlet.X = "H2:1"
 f.oxidizer_inlet.X = "O2:1"
 f.fuel_inlet.T = 300
 f.oxidizer_inlet.T = 300
 
 # Save data in:
-file_path = "Data/unstable_refine_2_Z0.6000.h5"
+file_path = "Data/unstable_Z0.8000.h5"
 
-
-# Initialize
-start_file = "Data/even_higher_ref_2_Z0.6000.h5"
+# Initialize from stable.py's own extinction-point output, so the unstable
+# branch continues from exactly where the strain-rate sweep left off.
+start_file = "Data/stable_Z0.8000.h5"
 h5_file = h5py.File(start_file, "r")
-keys = ["extinction/" + key for key in h5_file["extinction"].keys()]
+keys = ["extinction/" + key for key in sorted(h5_file["extinction"].keys())]
 
+# stable.py's np.isclose extinction check has a tight tolerance, so the last
+# few saved keys can already be extinguished (T_max at ambient) before the
+# abort criterion actually triggers -- using keys[-1] directly would start
+# the two-point control from a cold, non-burning state. Search backward for
+# the last key that's still meaningfully burning instead.
+inlet_T = max(f.fuel_inlet.T, f.oxidizer_inlet.T)
 last_run = keys[-1]
+for key in reversed(keys):
+    if h5_file[key]["flame"]["T"][:].max() > inlet_T + 50:
+        last_run = key
+        break
+else:
+    raise RuntimeError(f"No burning state found in {start_file}; all saved "
+                        "states are near ambient temperature.")
 first_run = keys[0]
 
 # Restore first solution
@@ -40,6 +66,7 @@ a_max = strain_rate = f.strain_rate("max")
 
 wall_params = {
     'Z_wall': h5_file[last_run]["flame"]["z"].attrs["z_wall"],
+    'Z_wall_width': 0.01,
     'T_wall': 300.0,
     'factor': h5_file[last_run]["flame"]["z"].attrs["factor"],
     'mix_frac': 'H',
@@ -50,14 +77,11 @@ wall_params = {
 
 z_stoich = ut.get_z_stoich(gas, wall_params, reaction_mechanism)
 
-# Restore last solution
+# Restore last (most-strained, closest to extinction) solution
 f.restore(start_file, last_run)
 
 f.set_refine_criteria(ratio=3.0, slope=0.5, curve=0.05, prune=0.01, enthalpy=False, enthalpy_curve=0.5)
 f.transport_model = "unity-Lewis-number"
-
-# Save starting solution in new file
-# ut.save_with_attributes(f, file_path, "initial", wall_params, z_stoich, info=True)
 
 
 ##############################################################################
@@ -71,7 +95,7 @@ n_max = 500
 # failures early on, while using higher values on the unstable branch tend to help
 # with finding solutions where the peak temperature is very low.
 initial_spacing = 0.6
-unstable_spacing =  0.95
+unstable_spacing = 0.95
 
 # Amount to adjust temperature at the control point each step [K]
 temperature_increment = 100
@@ -88,12 +112,10 @@ error_count = 0
 strain_rate_tol = 0.1
 
 f.two_point_control_enabled = True
-#f.set_max_jac_age(1, 1)
 # Prevent two point control from finding solutions with negative inlet velocities
 f.flame.set_bounds(spread_rate=(-1e-5, 1e20))
-f.max_time_step_count = 1000 
+f.max_time_step_count = 1000
 T_max = max(f.T)
-#a_max = strain_rate = f.strain_rate('max')
 print("tmax: ", T_max)
 data = []  # integral output quantities for each step
 solved = False
@@ -109,14 +131,11 @@ for i in range(n_max):
     else:
         spacing = unstable_spacing
 
-    backup_state = f.to_array()
-    
-    control_temperature = np.min(f.T) + spacing*(np.max(f.T) - np.min(f.T))
+    control_temperature = np.min(f.T) + spacing * (np.max(f.T) - np.min(f.T))
 
     # Store the flame state in case the iteration fails and we need to roll back
     backup_state = f.to_array()
 
-    print("In starin loop:")
     print(f"T_max: {np.max(f.T)}")
     print(f'Iteration {i}: Control temperature = {control_temperature:.2f} K')
 
@@ -143,7 +162,7 @@ for i in range(n_max):
         break
 
     try:
-        runtime, factor_last_working = ut.solve_with_wall(f, wall_params, factor_last_working=factor_last_working, 
+        runtime, factor_last_working = ut.solve_with_wall(f, wall_params, factor_last_working=factor_last_working,
                                                  factor_increase=1.1, factor_decrease=0.9, delta_T_max=1.0, loglevel=1, refine_grid=refine_grid, auto=auto)
 
         print(f"Factor last working: {factor_last_working}")
@@ -169,7 +188,6 @@ for i in range(n_max):
         error_count += 1
         print(f"Did not converge on iteration {i}. New dT = {temperature_increment:.2f}")
 
-
     if solved:
         print(f"Saving on iteration{i}")
         name = f"iteration{i}"
@@ -178,7 +196,7 @@ for i in range(n_max):
         # Collect output stats
         T_max = max(f.T)
         T_mid = 0.5 * (min(f.T) + max(f.T))
-        s = np.where(f.T > T_mid)[0][[0,-1]]
+        s = np.where(f.T > T_mid)[0][[0, -1]]
         width = f.grid[s[1]] - f.grid[s[0]]
         strain_rate = f.strain_rate('max')
         a_max = max(strain_rate, a_max)
@@ -195,7 +213,7 @@ for i in range(n_max):
             'cpu_time': sum(f.jacobian_time_stats + f.eval_time_stats),
             'errors': error_count
         })
-        
+
         df = pd.DataFrame.from_records(data)
 
     if error_count >= max_error_count:
@@ -205,10 +223,11 @@ for i in range(n_max):
 
 print(f'Stopped after {i} iterations')
 
-plt.figure()
-plt.plot(df.strain_rate, df.T_max)
-plt.xlabel('a_max')
-plt.ylabel('T_max')
-plt.show()
-
-                                
+if data:
+    plt.figure()
+    plt.plot(df.strain_rate, df.T_max)
+    plt.xlabel('a_max')
+    plt.ylabel('T_max')
+    plt.show()
+else:
+    print("No successful iterations to plot.")

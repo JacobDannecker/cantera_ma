@@ -659,8 +659,6 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
     // j0 and j1 are constrained to only interior points
     size_t j0 = std::max<size_t>(jmin, 1);
     size_t j1 = std::min(jmax, m_points-2);
-    
-    //factor = pow((1-m_Z_wall), 4) * m_factor;
 
     for (size_t j = j0; j <= j1; j++) {
         if (m_do_energy[j]) {
@@ -676,24 +674,25 @@ void Flow1D::evalEnergy(span<const double> x, span<double> rsd, span<int> diag,
             rsd[index(c_offset_T, j)] = - m_cp[j]*rho_u(x, j)*dTdz(x, j)
                                         - conduction(x, j) - sum;
             rsd[index(c_offset_T, j)] /= (m_rho[j]*m_cp[j]);
-	    rsd[index(c_offset_T, j)] -= (m_qdotRadiation[j] / (m_rho[j] * m_cp[j]));
+            rsd[index(c_offset_T, j)] -= (m_qdotRadiation[j] / (m_rho[j] * m_cp[j]));
 
-	    // Ad sink for all points up until wall if non adiabatic wall is active
-	    if (m_do_non_adiabatic_wall) {
-		double Z = m_thermo->mixtureFraction(m_fuel, m_oxidizer, m_mix_basis, m_mix_frac);
-		double sink = 0;
-            	if (Z >= m_Z_wall) {
-			if (m_factor > 1){
-                		rsd[index(c_offset_T, j)] -=  m_factor * (T(x, j) - m_T_wall);// *  pow(T(x, j), 4); //* 1/(1-Z) * pow((T(x, j) - m_T_wall), 4);
-			}
-			else {
-                		rsd[index(c_offset_T, j)] -=  pow((T(x, j) - m_T_wall), 4);// *  pow(T(x, j), 4); //* 1/(1-Z) * pow((T(x, j) - m_T_wall), 4);
-			}
-			//m_factor * pow((T(x, j) - m_T_wall), 4);
-			sink = (m_factor * (T(x, j) - m_T_wall)) * m_factor * m_factor; //*  pow(T(x, j), 4);
-	//		writelog("Gridpoint: {}, Z: {}, T(x,j) - m_T_wall: {} factor: {}, sinktotal: {}\n", j, Z, (T(x,j) - m_T_wall), m_factor, sink);
-            }}
-
+            // Permeable-wall heat sink, relaxing T toward T_wall on the
+            // fuel-rich side of Z_wall. Blended in a window [Z_wall - Z_wall_width, Z_wall + Z_wall_width]:
+            if (m_do_non_adiabatic_wall) {
+                double Z = m_thermo->mixtureFraction(m_fuel, m_oxidizer, m_mix_basis, m_mix_frac);
+                double lo = m_Z_wall - m_Z_wall_width;
+                double hi = m_Z_wall + m_Z_wall_width;
+                double weight;
+                if (Z <= lo) {
+                    weight = 0.0;
+                } else if (Z >= hi) {
+                    weight = 1.0;
+                } else {
+                    double t = (Z - lo) / (hi - lo);
+                    weight = t * t * (3.0 - 2.0 * t);
+                }
+                rsd[index(c_offset_T, j)] -= weight * m_factor * (T(x, j) - m_T_wall);
+            }
 
             if (!m_twoPointControl || (m_z[j] != m_tLeft && m_z[j] != m_tRight)) {
                 rsd[index(c_offset_T, j)] -= rdt*(T(x, j) - T_prev(j));
@@ -1446,6 +1445,9 @@ void Flow1D::setNonAdiabaticWall(const AnyMap& params)
     if (params.hasKey("Z_wall")) {
         m_Z_wall = params.at("Z_wall").asDouble();
     }
+    if (params.hasKey("Z_wall_width")) {
+        m_Z_wall_width = params.at("Z_wall_width").asDouble();
+    }
     if (params.hasKey("T_wall")) {
         m_T_wall = params.at("T_wall").asDouble();
     }
@@ -1470,17 +1472,7 @@ void Flow1D::setNonAdiabaticWall(const AnyMap& params)
         }
     }
 
-/*    writelog("Non adiabatic wall active:\n");
-    writelog("    Wall position: {:.4f}\n", m_Z_wall);
-    writelog("    Wall temperature: {:.1f} K\n", m_T_wall);
-    writelog("    Factor: {:.2e}\n", m_factor);
-    writelog("    Mixture fraction species: {}\n", m_mix_frac);
-    writelog("    Fuel species: {}\n", m_fuel);
-    writelog("    Oxidizer species: {}\n", m_oxidizer);
-    writelog("    Basis: {}\n", m_mix_basis == ThermoBasis::mass ? "mass" : "molar");
-*/
     m_do_non_adiabatic_wall = true;
-
 }
 
 } // namespace

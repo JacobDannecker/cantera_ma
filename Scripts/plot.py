@@ -6,14 +6,7 @@ from matplotlib import pyplot as plt
 from scipy import special
 import utils as ut
 
-#files = ["Data/even_higher_ref_2_Z0.6000.h5", "Data/stable_Z0.6000.h5"]
-#files = ["Data/stable_Z0.9000.h5"]
-#files = ["Data/unstable_refine_2_Z0.6000.h5", "Data/even_higher_ref_2_Z0.6000.h5"]
-#files = ["Data/stable_nogrid_Z0.9000.h5", "Data/stable_Z0.9000.h5"]
-#files = ["stable_2_Z0.6000.h5",  "stable_3_Z0.3000.h5",  "stable_unstable_Z0.2000.h5",  "stable_Z0.2000.h5", "stable_Z0.5000.h5",  "stable_Z1.0000.h5",  "unstable_Z0.5000.h5"]
-files = ["test_0.98.h5"]
-#files = ["2000.h5"]
-#path = "Final_Data/"
+files = ["stable_Z0.8000.h5", "unstable_Z0.8000.h5"]
 path = "Data/"
 file_list = [path + file for file in files]
 

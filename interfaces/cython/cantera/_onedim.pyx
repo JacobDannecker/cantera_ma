@@ -850,17 +850,30 @@ cdef class FlowBase(Domain1D):
         """
         Set non-adiabatic wall parameters from a dictionary.
 
+        Introduces a volumetric relaxation sink in the energy equation that
+        drives T toward ``T_wall`` on the fuel-rich side of ``Z_wall``,
+        blended in smoothly via a smoothstep over the compact window
+        ``[Z_wall - Z_wall_width, Z_wall + Z_wall_width]`` (weight exactly 0
+        below it, exactly 1 above it), so its influence is confined to this
+        fixed-width band regardless of ``factor``.
+
         :param params:
             Dictionary containing wall parameters. Valid keys are:
             - ``Z_wall``: Wall position (double)
+            - ``Z_wall_width``: Half-width, in mixture fraction space, of the
+              smoothstep blending window centered on ``Z_wall`` (double, must
+              be positive, default 0.01).
             - ``T_wall``: Wall temperature (double)
-            - ``factor``: Factor used in energy equation (double)
+            - ``factor``: Sink stiffness (double). The value needed to keep
+              the wall region near ``T_wall`` grows with local strain rate;
+              typically found via an outer search/continuation rather than
+              set directly.
             - ``mix_frac``: Mixture fraction species name (str)
             - ``fuel``: Fuel species name (str)
             - ``oxidizer``: Oxidizer species name (str)
             - ``basis``: Mixture fraction basis, either "mass" or "molar" (str)
 
-        >>> flow.set_non_adiabatic_wall({"Z_wall": 0.9, "T_wall": 500.0, "factor": 1e9, "mix_frac": "H", "fuel": "H2", "oxidizer": "O2", "basis": "mass"})
+        >>> flow.set_non_adiabatic_wall({"Z_wall": 0.9, "Z_wall_width": 0.01, "T_wall": 500.0, "factor": 1e6, "mix_frac": "H", "fuel": "H2", "oxidizer": "O2", "basis": "mass"})
         """
         cdef CxxAnyMap cxx_params = py_to_anymap(params)
         self.flow.setNonAdiabaticWall(cxx_params)
