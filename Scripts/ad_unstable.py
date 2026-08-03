@@ -41,19 +41,14 @@ f.oxidizer_inlet.T = 300
 start_path = "Data/"
 save_path = "Data/"
 
-files = [
-       #  "stable_Z0.4500.h5", 
-        "stable_Z0.5000.h5",
-         #"stable_Z0.2500.h5",  
-         ]
+files = ["stable_ad.h5",]
+
 start_files = [start_path + file for file in files]    
 for start_file in start_files:
     h5_file = h5py.File(start_file, "r")
     keys = ["extinction/" + key for key in sorted(h5_file["extinction"].keys())]
     
-    Z_wall_val = h5_file[keys[0]]["flame/z"].attrs["z_wall"]
-    file_tag = f"Z{Z_wall_val:.4f}"                                             
-    save_file = save_path + f"3unstable_{file_tag}.h5"
+    save_file = save_path + f"unstable_ad.h5"
 
 
     # stable.py's np.isclose extinction check has a tight tolerance, so the last
@@ -77,18 +72,6 @@ for start_file in start_files:
 
     a_max = strain_rate = f.strain_rate("max")
 
-    wall_params = {
-        'Z_wall': h5_file[last_run]["flame"]["z"].attrs["z_wall"],
-        'Z_wall_width': 0.001,
-        'T_wall': 300.0,
-        'factor': h5_file[last_run]["flame"]["z"].attrs["factor"],
-        'mix_frac': 'H',
-        'fuel': 'H2',
-        'oxidizer': 'O2',
-        'basis': 'mass'
-    }
-
-    z_stoich = ut.get_z_stoich(gas, wall_params, reaction_mechanism)
 
     # Restore last (most-strained, closest to extinction) solution
     f.restore(start_file, last_run)
@@ -132,7 +115,6 @@ for start_file in start_files:
     data = []  # integral output quantities for each step
     solved = False
 
-    factor_last_working = wall_params["factor"]
     refine_grid = True
     auto = False
     enthalpy_refinement = True
@@ -176,10 +158,7 @@ for start_file in start_files:
             break
 
         try:
-            runtime, factor_last_working = ut.solve_with_wall(f, wall_params, factor_last_working=factor_last_working,
-                                                     factor_increase=1.1, factor_decrease=0.9, delta_T_max=1.0, loglevel=1, refine_grid=refine_grid, auto=auto)
-
-            print(f"Factor last working: {factor_last_working}")
+            f.solve(refine_grid=refine_grid, auto=auto)
             if abs(max(f.T) - T_max) < 0.8 * target_delta_T_max:
                 # Max temperature is changing slowly. Try a larger increment next step
                 temperature_increment = min(temperature_increment + 3, max_increment)
@@ -191,10 +170,10 @@ for start_file in start_files:
         except (ut.SolveFailure, ct.CanteraError) as err:
             solved = False
             print(err)
-            if strain_rate / a_max < strain_rate_tol:
-                print('SUCCESS! Traversed unstable branch down to '
-                            f'{100 * strain_rate / a_max:.2f}% of the maximum strain rate.')
-                break
+            #if strain_rate / a_max < strain_rate_tol:
+            #    print('SUCCESS! Traversed unstable branch down to '
+            #                f'{100 * strain_rate / a_max:.2f}% of the maximum strain rate.')
+            #    break
             # Restore the previous solution and try a smaller temperature increment for the
             # next iteration
             f.from_array(backup_state)
@@ -205,7 +184,7 @@ for start_file in start_files:
         if solved:
             print(f"Saving on iteration{i}")
             name = f"iteration{i}"
-            ut.save_with_attributes(f, save_file, name, wall_params, z_stoich, enthalpy_refinement=enthalpy_refinement, enthalpy_curve=enthalpy_curve, info=True)
+            f.save(save_file, name)
 
             # Collect output stats
             T_max = max(f.T)

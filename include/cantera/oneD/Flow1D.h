@@ -1036,11 +1036,19 @@ public:
     //! Wall position used in energy equation
     double m_wall_pos = 0.1;
 
-    //! Factor used in energy equation
+    //! Stiffness of the permeable-wall relaxation sink (see #m_Z_wall_width).
+    //! Usually found via an outer factor search, since the value needed to
+    //! hold the wall region near #m_T_wall grows with local strain rate.
     double m_factor = 1000.0;
 
     //! Wall position for boundary condition (Z-coordinate)
     double m_Z_wall = 0.1;
+
+    //! Half-width (in mixture fraction space) of the window around #m_Z_wall
+    //! over which the sink is smoothly blended in via a smoothstep (weight 0
+    //! at Z_wall - Z_wall_width, weight 1 at Z_wall + Z_wall_width). The sink
+    //! has exactly zero effect outside this window, regardless of #m_factor.
+    double m_Z_wall_width = 0.01;
 
     //! Wall temperature
     double m_T_wall = 300.0;
