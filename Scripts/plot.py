@@ -49,30 +49,30 @@ files = [
           ]                                  
 
 files = [
-    "2unstable_Z0.1600.h5", 
-    "2unstable_Z0.1700.h5", 
-    "2unstable_Z0.2000.h5",
-    "2unstable_Z0.3000.h5", 
-    "2unstable_Z0.3500.h5", 
-    "2unstable_Z0.4000.h5",
-    "2unstable_Z0.4500.h5", 
-    "2unstable_Z0.5000.h5", 
-    "2unstable_Z0.5500.h5",
-    "2unstable_Z0.6000.h5", 
-    "2unstable_Z0.6500.h5", 
-    "2unstable_Z0.7000.h5",
-    "2unstable_Z0.7500.h5", 
-    "2unstable_Z0.8000.h5", 
-    "2unstable_Z0.8500.h5",
-    "2unstable_Z0.9000.h5", 
-    "2unstable_Z0.9500.h5", 
-    "2unstable_Z1.0000.h5",
-    "stable_Z0.1600.h5", 
-    "stable_Z0.1700.h5", 
-    "stable_Z0.2000.h5",
-    "stable_Z0.2500.h5", 
-    "stable_Z0.3000.h5", 
-    "stable_Z0.3500.h5",
+#    "2unstable_Z0.1600.h5", 
+#    "2unstable_Z0.1700.h5", 
+#    "2unstable_Z0.2000.h5",
+#    "2unstable_Z0.3000.h5", 
+#    "2unstable_Z0.3500.h5", 
+#    "2unstable_Z0.4000.h5",
+#    "2unstable_Z0.4500.h5", 
+#    "2unstable_Z0.5000.h5", 
+#    "2unstable_Z0.5500.h5",
+#    "2unstable_Z0.6000.h5", 
+#    "2unstable_Z0.6500.h5", 
+#    "2unstable_Z0.7000.h5",
+#    "2unstable_Z0.7500.h5", 
+#    "2unstable_Z0.8000.h5", 
+#    "2unstable_Z0.8500.h5",
+#    "2unstable_Z0.9000.h5", 
+#    "2unstable_Z0.9500.h5", 
+#    "2unstable_Z1.0000.h5",
+#    "stable_Z0.1600.h5", 
+#    "stable_Z0.1700.h5", 
+#    "stable_Z0.2000.h5",
+#    "stable_Z0.2500.h5", 
+#    "stable_Z0.3000.h5", 
+#    "stable_Z0.3500.h5",
     "stable_Z0.4000.h5", 
     "stable_Z0.4500.h5", 
     "stable_Z0.5000.h5",
@@ -85,9 +85,9 @@ files = [
     "stable_Z0.8500.h5", 
     "stable_Z0.9000.h5", 
     "stable_Z0.9500.h5",
-    "stable_Z1.0000.h5",
-    "stable_ad.h5",
-    "unstable_ad.h5"
+#    "stable_Z1.0000.h5",
+#    "stable_ad.h5",
+#    "unstable_ad.h5"
 ]
 #files = ["stable_Z1.0000.h5", "stable_Z0.9000.h5", "stable_Z0.9500.h5", "stable_Z0.8500.h5", "test_stable_Z0.9900.h5", ]
 #files = ["stable_Z0.3000.h5"]
@@ -149,14 +149,14 @@ for file in file_list:
     for  name in names:                                                              
         f.restore(file, name=name)                                             
         rms_b = ut.rms(f.T)
-        try:
-            if file == "test_stable_Z0.9900.h5":
-                ut.correct_enthalpy_flame(f, "H2O", style="line")
-            else:
-                ut.correct_enthalpy_flame(f, "H2O")
-        except:
-            continue
-
+#        try:
+#            if file == "Data/stable_ad.h5" or file == "Data/unstable_ad.h5":
+#                ut.correct_enthalpy_flame(f, "H2O", style="line")
+#            else:
+#                ut.correct_enthalpy_flame(f, "H2O")
+#        except:
+#            continue
+#
         #ut.correct_enthalpy_flame(f, "H2O", style="vshape")
         rms_a = ut.rms(f.T)
         print(f"Diff rms {np.abs(rms_a-rms_b)}")
@@ -221,7 +221,6 @@ ax3.set_xlabel("a_max")
 ax3.set_ylabel("T_max")
 
 plt.tight_layout()                                                              
-plt.savefig("figure.pgf", format="pgf")
 plt.show()                                                                      
 
 
