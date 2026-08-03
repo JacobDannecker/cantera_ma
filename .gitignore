@@ -92,3 +92,7 @@ Scripts/bak2manifold.py
 Scripts/diffenth.py
 Scripts/plot_secant.py
 Scripts/zmanifold.py
+Scripts/2zmanifold.py
+Scripts/correct.py
+Scripts/plot_unstable_ad.py
+.gitignore
