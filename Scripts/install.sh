@@ -1,13 +1,13 @@
 #!/bin/bash
 echo "Installing  dependencies..."
-sudo apt update && sudo apt install -y python3-venv && sudo apt install scons -y && sudo apt install libboost-dev -y && sudo apt install libhdf5-de -y && sudo apt install python3-venv -y && sudo apt install doxygen -y
+sudo apt update && sudo apt install -y python3-venv && sudo apt install scons -y && sudo apt install libboost-dev -y && sudo apt install libhdf5-dev -y && sudo apt install python3-venv -y && sudo apt install doxygen -y
 
 echo "Creating Project directory..."
 mkdir cantera_wall
 cd cantera_wall
 echo "Creating virtual environment 'wall_env'..."
 python3 -m venv can_env
-echo "Cloning repository into 'dummy'..."
+echo "Cloning repository  ..."
 git clone --recursive https://github.com/JacobDannecker/cantera_ma.git cantera_ma
 echo "Activating virtual environment..."
 source can_env/bin/activate

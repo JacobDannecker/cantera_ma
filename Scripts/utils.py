@@ -7,7 +7,7 @@ import cantera as ct
 import time
 from colorama import Fore, Back, Style
 
-def add_attributes(f, file_path, name, wall_params, z_stoich, runtime):
+def add_attributes(f, file_path, name, wall_params, z_stoich, runtime, enthalpy_refinement, enthalpy_curve):
     z_array = f.mixture_fraction(wall_params["mix_frac"])
     h_mass_array = f.enthalpy_mass
     h_mole_array = f.enthalpy_mole
@@ -16,6 +16,7 @@ def add_attributes(f, file_path, name, wall_params, z_stoich, runtime):
     group_h_mass = name + "/flame/h_mass"
     group_h_mole = name + "/flame/h_mole"
     group_flame = name + "/flame"
+    group_refine = name + "/flame/refine-criteria"
     # Data
     hdf5_file.create_dataset(name=group_z, data=z_array)
     hdf5_file.create_dataset(name=group_h_mass, data=h_mass_array)
@@ -28,6 +29,10 @@ def add_attributes(f, file_path, name, wall_params, z_stoich, runtime):
     hdf5_file[group_z].add_attr = "basis"
     hdf5_file[group_z].add_attr = "chi_st"
     hdf5_file[group_z].add_attr = "z_wall"
+    hdf5_file[group_z].add_attr = "z_wall_width"
+    hdf5_file[group_refine].add_attr = "enthalpy_refinement"
+    hdf5_file[group_refine].add_attr = "enthalpy_curve"
+
     hdf5_file[group_z].add_attr = "factor"
 
     hdf5_file[group_z].attrs["mix_frac"] = wall_params["mix_frac"]
@@ -37,7 +42,11 @@ def add_attributes(f, file_path, name, wall_params, z_stoich, runtime):
     hdf5_file[group_z].attrs["chi_st"] = chi_stoich(f, z_stoich)
     hdf5_file[group_z].attrs["z_wall"] = wall_params["Z_wall"]
     hdf5_file[group_z].attrs["factor"] = wall_params["factor"]
-       
+
+    hdf5_file[group_z].attrs["z_wall_width"] = wall_params["Z_wall_width"]
+    hdf5_file[group_refine].attrs["enthalpy_refinement"] = enthalpy_refinement
+    hdf5_file[group_refine].attrs["enthalpy_curve"] = enthalpy_curve
+    
     if runtime:
         hdf5_file[group_flame].attrs["runtime"]= runtime
     else:
@@ -46,7 +55,7 @@ def add_attributes(f, file_path, name, wall_params, z_stoich, runtime):
 
     hdf5_file.close()
 
-def save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True, runtime=False):
+def save_with_attributes(f, file_path, name, wall_params, z_stoich, enthalpy_refinement, enthalpy_curve, info=True, runtime=False):
     # Save state of flame to hdf5 file. Add relevant data.
     z_wall = wall_params["Z_wall"]
     if info:
@@ -54,7 +63,7 @@ def save_with_attributes(f, file_path, name, wall_params, z_stoich, info=True, r
         print_g(f"Solved at z_wall: {z_wall}, saving flame")
         print("##############################################################\n")
     f.save(file_path, name=name, overwrite=True)
-    add_attributes(f, file_path, name, wall_params, z_stoich, runtime)
+    add_attributes(f, file_path, name, wall_params, z_stoich, runtime, enthalpy_refinement, enthalpy_curve)
 
 def chi_stoich(f, z_stoich):
     a = np.mean(np.abs(np.gradient(f.velocity) / np.gradient(f.grid)))
@@ -114,7 +123,7 @@ DEFAULT_FACTOR_SEED = 1e6
 _MAX_LOG_STEP = np.log(10.0)   # cap a single secant step to 10x in factor
 _MIN_LOG_STEP = np.log(1.05)   # minimum forward progress per secant step
 
-def _next_factor(history, current_factor, factor_increase, delta_T_max, max_factor):
+def get_next_factor(history, current_factor, factor_increase, delta_T_max, max_factor):
     """Propose the next wall 'factor' via a bounded secant step on
     ln(factor) targeting delta_T_wall == delta_T_max, given the
     (ln(factor), delta_T_wall) history tried so far. Falls back to geometric
@@ -173,7 +182,6 @@ def solve_with_wall(f, wall_params, delta_T_max=1., factor_last_working=False,
             delta_T_wall = get_delta_T(f, wall_params)
             print_c(f"Delta T wall: {delta_T_wall}")
             history.append((np.log(wall_params["factor"]), delta_T_wall))
-
             if delta_T_wall < delta_T_max:
                 strain_max = f.strain_rate("max")
                 print_c(f"Solved with \n m_f: {f.fuel_inlet.mdot}, \n m_o: {f.oxidizer_inlet.mdot}, "
@@ -181,6 +189,7 @@ def solve_with_wall(f, wall_params, delta_T_max=1., factor_last_working=False,
                 print_m(f"\n strain_max: {strain_max}, \n T_max = {np.max(f.T)}")
                 runtime = time.time() - start_time
                 return runtime, wall_params["factor"]
+            correct_enthalpy_flame(f, "H2O")                                         
 
             # A successful (if insufficiently strong) solve resets the
             # plain-solve error streak and drops back to the caller's auto
@@ -193,7 +202,7 @@ def solve_with_wall(f, wall_params, delta_T_max=1., factor_last_working=False,
                     f"{delta_T_wall:.4g}).")
             plain_errors = 0
             use_auto = auto
-            wall_params["factor"] = _next_factor(
+            wall_params["factor"] = get_next_factor(
                 history, wall_params["factor"], factor_increase, delta_T_max, max_factor)
 
         except ct.CanteraError as err:
@@ -225,8 +234,8 @@ def solve_with_wall(f, wall_params, delta_T_max=1., factor_last_working=False,
 def runtime(func):
     def wrapper():
         start = time.time()
-        end = time.time()
         val = func()
+        end = time.time()
         total = end - start
         print(f"Runtime: {total}")
         return val
@@ -282,36 +291,80 @@ def compute_enthalpy_and_Z(gas, T, Y, fuel_idx=0, oxidizer_idx=3):
         Z[j] = gas.mixture_fraction(fuel, oxidizer, basis="mass")               
     return h, Z        
 
-def perfect_v_shape(Z, h, zero_ends=False):                                     
-    i_tip = np.argmin(h)                                                        
-    if zero_ends:                                                               
-        left_z = np.array([Z[0], Z[i_tip]])                                     
-        left_h = np.array([0.0, h[i_tip]])                                      
-        right_z = np.array([Z[i_tip], Z[-1]])                                   
-        right_h = np.array([h[i_tip], 0.0])                                     
-    else:                                                                       
-        left_z = Z[: i_tip + 1]                                                 
-        left_h = h[: i_tip + 1]                                                 
-        right_z = Z[i_tip:]                                                     
-        right_h = h[i_tip:]                                                     
-    left = np.polyfit(left_z, left_h, 1)                                        
-    right = np.polyfit(right_z, right_h, 1)                                     
-    h_v = np.where(np.arange(len(Z)) <= i_tip, np.polyval(left, Z),             
-                   np.polyval(right, Z))                                        
-    return h_v, i_tip                                                          
+#def perfect_v_shape(Z, h, zero_ends=False):                                     
+#    i_tip = np.argmin(h)                                                        
+#    if zero_ends:                                                               
+#        left_z = np.array([Z[0], Z[i_tip]])                                     
+#        left_h = np.array([0.0, h[i_tip]])                                      
+#        right_z = np.array([Z[i_tip], Z[-1]])                                   
+#        right_h = np.array([h[i_tip], 0.0])                                     
+#    else:                                                                       
+#        left_z = Z[: i_tip + 1]                                                 
+#        left_h = h[: i_tip + 1]                                                 
+#        right_z = Z[i_tip:]                                                     
+#        right_h = h[i_tip:]                                                     
+#    left = np.polyfit(left_z, left_h, 1)                                        
+#    right = np.polyfit(right_z, right_h, 1)                                     
+#    h_v = np.where(np.arange(len(Z)) <= i_tip, np.polyval(left, Z),             
+#                   np.polyval(right, Z))                                        
+#    return h_v, i_tip                                                          
 
+#def perfect_v_shape(Z, h, zero_ends=False):
+#    i_tip = np.argmin(h)
+#    
+#    if zero_ends:
+#        h_left, h_right = 0.0, 0.0
+#    else:
+#        h_left, h_right = h[0], h[-1]
+#    
+#    h_v = np.where(
+#        np.arange(len(Z)) <= i_tip,
+#        np.interp(Z, [Z[0], Z[i_tip]], [h_left, h[i_tip]]),
+#        np.interp(Z, [Z[i_tip], Z[-1]], [h[i_tip], h_right])
+#    )
+#    print(h_v.shape)
+#    plt.plot(Z, h_v)
+#    plt.show()
+#    return h_v, i_tip
 
-def perfect_line(Z, h, zero_ends=False):                                        
-    if zero_ends:                                                               
-        z_line = np.array([Z[0], Z[-1]])                                        
-        h_line = np.array([0.0, 0.0])                                           
-    else:                                                                       
-        z_line = Z                                                               
-        h_line = h                                                               
-    coeffs = np.polyfit(z_line, h_line, 1)                                       
-    h_line = np.polyval(coeffs, Z)                                               
-    return h_line                                                               
+def perfect_v_shape(Z, h, zero_ends=False):
+    i_tip = np.argmin(h)
+    z_min = Z[i_tip]
+    if zero_ends:
+        h_left, h_right = 0.0, 0.0
+    else:
+        h_left, h_right = h[0], h[-1]
 
+    left_slope = (h[i_tip] - h_left) / (Z[i_tip] - Z[0])
+    right_slope = (h_right - h[i_tip]) / (Z[-1] - Z[i_tip])
+    h_v = np.where(
+        np.arange(len(Z)) <= i_tip,
+        h_left + left_slope * (Z - Z[0]),
+        h[i_tip] + right_slope * (Z - Z[i_tip])
+    )
+    return h_v, i_tip
+
+#def perfect_line(Z, h, zero_ends=False):                                        
+#    if zero_ends:                                                               
+#        z_line = np.array([Z[0], Z[-1]])                                        
+#        h_line = np.array([0.0, 0.0])                                           
+#    else:                                                                       
+#        z_line = Z                                                               
+#        h_line = h                                                               
+#    coeffs = np.polyfit(z_line, h_line, 1)                                       
+#    h_line = np.polyval(coeffs, Z)                                               
+#    return h_line                                                               
+def perfect_line(Z, h, zero_ends=False):
+    if zero_ends:
+        z_line = np.array([Z[0], Z[-1]])
+        h_line = np.array([0.0, 0.0])
+    else:
+        z_line = np.array([Z[0], Z[-1]])
+        h_line = np.array([h[0], h[-1]])
+    slope = (h_line[1] - h_line[0]) / (z_line[1] - z_line[0])
+    intercept = h_line[0] - slope * z_line[0]
+    h_line = slope * Z + intercept
+    return h_line
 
 def temperature_from_HPY(gas, h, Y, P=None):
    if P is None:                                                                
@@ -325,9 +378,10 @@ def temperature_from_HPY(gas, h, Y, P=None):
                                                                                 
 def correct_enthalpy(file_path, name, C, style="vshape"):                                                
    grid, T_orig, Y, a_max, idx_C, mech = load_data(file_path, name, C)          
+   if np.max(T_orig) < 350:
+       return False
    gas_i = ct.Solution(mech)                                                    
    P = gas_i.P                                                                  
-   print(grid.shape, T_orig.shape, Y.shape)                                     
    h_orig, Z = compute_enthalpy_and_Z(gas_i, T_orig, Y)                         
    if style == "vshape":
        h_v, i_tip = perfect_v_shape(Z, h_orig, zero_ends=False)                     
@@ -337,5 +391,27 @@ def correct_enthalpy(file_path, name, C, style="vshape"):
    max_dh = np.max(np.abs(h_orig - h_v))                                        
    max_dT = np.max(np.abs(T_orig - T_v))                                        
    print(f"Max dh: {max_dh},Max dt: {max_dT}")                                  
-   return T_v, Y, h_v, Z, a_max, idx_C                                          
-                                                  
+   return T_v, Y, h_v, Z, a_max, idx_C, max_dh, max_dT                                          
+#   return T_orig, Y, h_orig, Z, a_max, idx_C, max_dh, max_dT                                          
+
+def correct_enthalpy_flame(f, C, style="vshape"):                                                
+    grid = f.grid
+    T_orig = f.T
+    Y = f.Y
+    gas_i = ct.Solution("h2o2.yaml")                                                    
+    P = gas_i.P                                                                  
+    print(grid.shape, T_orig.shape, Y.shape)                                     
+    h_orig, Z = compute_enthalpy_and_Z(gas_i, T_orig, Y)                         
+    if style == "vshape":
+        h_v, i_tip = perfect_v_shape(Z, h_orig, zero_ends=False)                     
+    elif style == "line":
+        h_v = perfect_line(Z, h_orig, zero_ends=False)                     
+    T_v = temperature_from_HPY(gas_i, h_v, Y)                                    
+    max_dh = np.max(np.abs(h_orig - h_v))                                        
+    max_dT = np.max(np.abs(T_orig - T_v))                                        
+    f.flame.set_values("T", T_v)                                              
+    print(f"Max dh: {max_dh},Max dt: {max_dT}")                                  
+                                                
+
+def rms(data):
+    return np.sqrt(np.mean(data ** 2))

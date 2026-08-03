@@ -40,7 +40,7 @@ exp_mdot_a = 1. / 2.
 
 delta_alpha_min = 0.001
 delta_T_min = 1.
-Z_wall_values = [0.8]
+Z_wall_values = [0.95]
 
 print(Z_wall_values)
 
@@ -60,8 +60,10 @@ for Z_wall_val in Z_wall_values:
     f.fuel_inlet.T = 300
     f.oxidizer_inlet.T = 300
     f.transport_model = "unity-Lewis-number"
-    f.set_refine_criteria(ratio=3, slope=0.5, curve=0.05, prune=0.03,
-                          enthalpy=False, enthalpy_curve=0.05)
+    enthalpy_refinement = True
+    enthalpy_curve = 0.005
+    f.set_refine_criteria(ratio=3, slope=0.5, curve=0.005, prune=0.003,
+                          enthalpy=enthalpy_refinement, enthalpy_curve=enthalpy_curve)
 
     # Wall parameters for this run. Z_wall_width is the half-width of the
     # compact mixture-fraction window over which the wall sink is smoothly
@@ -69,7 +71,7 @@ for Z_wall_val in Z_wall_values:
     # utils.solve_with_wall below.
     wall_params = {
         'Z_wall': Z_wall_val,
-        'Z_wall_width': 0.01,
+        'Z_wall_width': 0.001,
         'T_wall': 300.0,
         'mix_frac': 'H',
         'fuel': 'H2',
@@ -81,7 +83,7 @@ for Z_wall_val in Z_wall_values:
 
     # Output files with Z_wall in the name
     file_tag = f"Z{Z_wall_val:.4f}"
-    file_path = str(output_path / f"stable_{file_tag}.h5")
+    file_path = str(output_path / f"test_stable_{file_tag}.h5")
 
     # Tracks the group name (within file_path) of the last-known-good state
     # for each step index n, so a failed step can restore the right one.
@@ -90,14 +92,14 @@ for Z_wall_val in Z_wall_values:
 
     temperature_limit_extinction = max(f.oxidizer_inlet.T, f.fuel_inlet.T)
 
-    f.set_initial_guess(data="initial.h5", group="initial")
+    f.set_initial_guess(data="Scripts/initial.h5", group="initial")
 
     # --- Establish the wall at the base (unstrained) state via factor search. ---
     factor_last_working = False
     try:
         runtime, factor_last_working = ut.solve_with_wall(
             f, wall_params, factor_last_working=factor_last_working,
-            delta_T_max=1., loglevel=0, factor_increase=2., refine_grid=True, auto=True)
+            delta_T_max=0.1, loglevel=0, factor_increase=2., refine_grid=True, auto=True)
     except (ut.SolveFailure, ct.CanteraError) as e:
         failure_type = getattr(e, 'failure_type', ut.classify_failure(str(e)))
         ut.print_r(f"Could not establish the wall at Z_wall={Z_wall_val} "
@@ -105,7 +107,7 @@ for Z_wall_val in Z_wall_values:
         continue
     ut.print_g(f"Wall established at Z_wall={Z_wall_val}, factor={factor_last_working:.3g}. "
                f"T_max={np.max(f.T):.1f} K, n_grid={len(f.grid)}")
-    ut.save_with_attributes(f, file_path, "initial", wall_params, z_stoich_val, info=True)
+    ut.save_with_attributes(f, file_path, "initial", wall_params, z_stoich_val, enthalpy_refinement=enthalpy_refinement, enthalpy_curve=enthalpy_curve, runtime=runtime, info=True)
 
     # --- Extinction loop ---
     # last_good_alpha is the alpha value of the last converged state (the
@@ -120,7 +122,7 @@ for Z_wall_val in Z_wall_values:
     # delta_alpha only shrinks on failure below; grown back gently (rather
     # than reset outright) after each success so an early rough patch
     # doesn't force tiny steps for the rest of the run.
-    delta_alpha_start = 5
+    delta_alpha_start = 20
     delta_alpha = delta_alpha_start
     growth_factor = 1.3
     n = 0
@@ -146,7 +148,7 @@ for Z_wall_val in Z_wall_values:
         try:
             runtime, factor_last_working = ut.solve_with_wall(f, wall_params,
                                factor_last_working=factor_last_working,
-                               delta_T_max=1., loglevel=0, factor_increase=2., refine_grid=refine_grid, auto=auto)
+                               delta_T_max=0.1, loglevel=0, factor_increase=2., refine_grid=refine_grid, auto=auto)
             solved = True
 
         except (ut.SolveFailure, ct.CanteraError) as e:
@@ -164,7 +166,7 @@ for Z_wall_val in Z_wall_values:
                 last_good_alpha = alpha[-1]
                 name = f"extinction/{n:04d}"
                 names.append(name)
-                ut.save_with_attributes(f, file_path, name, wall_params, z_stoich_val, info=True, runtime=runtime)
+                ut.save_with_attributes(f, file_path, name, wall_params, z_stoich_val, enthalpy_refinement=enthalpy_refinement, enthalpy_curve=enthalpy_curve, runtime=runtime, info=True)
                 ut.print_y(f"Flame burning at alpha = {last_good_alpha:8.4f}.")
                 delta_alpha = min(delta_alpha * growth_factor, delta_alpha_start)
                 continue
@@ -173,11 +175,11 @@ for Z_wall_val in Z_wall_values:
         else:
             ut.print_r(f"Flame extinguished (solver failed: {failure_type}) at alpha = {alpha[-1]:8.4f}")
 
-        if (delta_alpha < delta_alpha_min) and (T_max[-2] - T_max[-1] < delta_T_min):
+        if (delta_alpha < delta_alpha_min):
             name = f"extinction/{n:04d}"
             names.append(name)
-            if solved:
-                ut.save_with_attributes(f, file_path, name, wall_params, z_stoich_val, info=True)
+            if solved and (T_max[-2] - T_max[-1] < delta_T_min):
+                ut.save_with_attributes(f, file_path, name, wall_params, z_stoich_val, enthalpy_refinement=enthalpy_refinement, enthalpy_curve=enthalpy_curve, runtime=runtime, info=True)
             else:
                 print("  (not saving — solver failed, no valid solution)")
             print(f'Flame extinguished at alpha = {alpha[-1]:8.4f}. '
