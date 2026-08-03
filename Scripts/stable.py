@@ -40,7 +40,7 @@ exp_mdot_a = 1. / 2.
 
 delta_alpha_min = 0.001
 delta_T_min = 1.
-Z_wall_values = [0.95]
+Z_wall_values = [0.90]
 
 print(Z_wall_values)
 

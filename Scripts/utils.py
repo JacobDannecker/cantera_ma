@@ -244,19 +244,19 @@ def runtime(func):
 
 
 def print_r(a):
-    print(Fore.RED + a + Style.RESET_ALL)
+    print(Fore.RED + str(a) + Style.RESET_ALL)
 
 def print_g(a):
-    print(Fore.GREEN + a + Style.RESET_ALL)
+    print(Fore.GREEN + str(a) + Style.RESET_ALL)
 
 def print_c(a):
-    print(Fore.CYAN + a + Style.RESET_ALL)
+    print(Fore.CYAN + str(a) + Style.RESET_ALL)
 
 def print_y(a):
-    print(Fore.YELLOW + a + Style.RESET_ALL)
+    print(Fore.YELLOW + str(a) + Style.RESET_ALL)
 
 def print_m(a):
-    print(Fore.MAGENTA + a + Style.RESET_ALL)
+    print(Fore.MAGENTA + str(a) + Style.RESET_ALL)
 
 
 def load_data(file_path, name, C):                                              
@@ -290,6 +290,18 @@ def compute_enthalpy_and_Z(gas, T, Y, fuel_idx=0, oxidizer_idx=3):
         h[j] = gas.enthalpy_mass                                                
         Z[j] = gas.mixture_fraction(fuel, oxidizer, basis="mass")               
     return h, Z        
+
+def compute_cold_enthalpy_and_Z(gas, Y, T_cold=300.0, fuel_idx=0, oxidizer_idx=3):
+    n = Y.shape[1]
+    h = np.empty(n)
+    Z = np.empty(n)
+    fuel = np.zeros(gas.n_species);  fuel[fuel_idx] = 1.0
+    oxidizer = np.zeros(gas.n_species);  oxidizer[oxidizer_idx] = 1.0
+    for j in range(n):
+        gas.TPY = T_cold, gas.P, Y.T[j]
+        h[j] = gas.enthalpy_mass
+        Z[j] = gas.mixture_fraction(fuel, oxidizer, basis="mass")
+    return h, Z
 
 #def perfect_v_shape(Z, h, zero_ends=False):                                     
 #    i_tip = np.argmin(h)                                                        
@@ -335,8 +347,12 @@ def perfect_v_shape(Z, h, zero_ends=False):
     else:
         h_left, h_right = h[0], h[-1]
 
-    left_slope = (h[i_tip] - h_left) / (Z[i_tip] - Z[0])
-    right_slope = (h_right - h[i_tip]) / (Z[-1] - Z[i_tip])
+    z_range = Z[-1] - Z[0]
+    tol = 1e-10 * max(abs(z_range), 1e-12)
+    left_span = Z[i_tip] - Z[0]
+    right_span = Z[-1] - Z[i_tip]
+    left_slope = (h[i_tip] - h_left) / left_span if abs(left_span) > tol else 0.0
+    right_slope = (h_right - h[i_tip]) / right_span if abs(right_span) > tol else 0.0
     h_v = np.where(
         np.arange(len(Z)) <= i_tip,
         h_left + left_slope * (Z - Z[0]),
@@ -376,17 +392,17 @@ def temperature_from_HPY(gas, h, Y, P=None):
        T[j] = gas.T                                                             
    return T                                                                     
                                                                                 
-def correct_enthalpy(file_path, name, C, style="vshape"):                                                
+def correct_enthalpy(file_path, name, C, style="vshape", active=True, zero_ends=False):                                                
    grid, T_orig, Y, a_max, idx_C, mech = load_data(file_path, name, C)          
-   if np.max(T_orig) < 350:
-       return False
    gas_i = ct.Solution(mech)                                                    
    P = gas_i.P                                                                  
    h_orig, Z = compute_enthalpy_and_Z(gas_i, T_orig, Y)                         
+   if not active:
+       return T_orig, Y, h_orig, Z, a_max, idx_C, 0.0, 0.0
    if style == "vshape":
-       h_v, i_tip = perfect_v_shape(Z, h_orig, zero_ends=False)                     
+       h_v, i_tip = perfect_v_shape(Z, h_orig, zero_ends=zero_ends)                     
    elif style == "line":
-       h_v = perfect_line(Z, h_orig, zero_ends=False)                     
+       h_v = perfect_line(Z, h_orig, zero_ends=zero_ends)                     
    T_v = temperature_from_HPY(gas_i, h_v, Y)                                    
    max_dh = np.max(np.abs(h_orig - h_v))                                        
    max_dT = np.max(np.abs(T_orig - T_v))                                        

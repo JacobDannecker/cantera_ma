@@ -13,38 +13,38 @@ import utils as ut
 files = [                                                                       
            "stable_Z0.1600.h5",
           "stable_Z0.1700.h5",
-          "stable_Z0.2000.h5",
- #         "stable_Z0.3000.h5",
+         "stable_Z0.2000.h5",
+          "stable_Z0.3000.h5",
           "stable_Z0.4000.h5",
          "stable_Z0.5000.h5",
           "stable_Z0.6000.h5",
-          "stable_Z0.7000.h5",
-#          "stable_Z0.8000.h5",
-#          "stable_Z0.9000.h5",
-#          "stable_Z0.9500.h5",
-#          "stable_Z1.0000.h5",
-#          "test_stable_Z1.0000.h5",
-##          "2unstable_Z0.1600.h5",
-#          "2unstable_Z0.1700.h5",
-#          "2unstable_Z0.2000.h5",
-#          "2unstable_Z0.3000.h5",
-#          "2unstable_Z0.4000.h5",
-         # "2unstable_Z0.5000.h5",
-#          "2unstable_Z0.6000.h5",
-#          "2unstable_Z0.7000.h5",
-#          "2unstable_Z0.8000.h5",
-#          "2unstable_Z0.9000.h5",
-#          "2unstable_Z0.9500.h5",
-#          "2unstable_Z1.0000.h5",
-#
-#          "stable_Z0.8500.h5",                                                   
-#          "stable_Z0.7500.h5",                                                   
-#          "stable_Z0.6500.h5",                                                   
-#          "stable_Z0.5500.h5",                                                   
-#          "stable_Z0.4500.h5",                                                   
-#          "stable_Z0.5500.h5",                                                   
-#          "stable_Z0.3500.h5",                                                   
-#          "stable_Z0.2500.h5",                                                   
+         "stable_Z0.7000.h5",
+          "stable_Z0.8000.h5",
+          "stable_Z0.9000.h5",
+          "stable_Z0.9500.h5",
+          "stable_Z1.0000.h5",
+          "test_stable_Z1.0000.h5",
+          "2unstable_Z0.1600.h5",
+          "2unstable_Z0.1700.h5",
+          "2unstable_Z0.2000.h5",
+          "2unstable_Z0.3000.h5",
+          "2unstable_Z0.4000.h5",
+         "2unstable_Z0.5000.h5",
+          "2unstable_Z0.6000.h5",
+          "2unstable_Z0.7000.h5",
+          "2unstable_Z0.8000.h5",
+          "2unstable_Z0.9000.h5",
+          "2unstable_Z0.9500.h5",
+          "2unstable_Z1.0000.h5",
+
+          "stable_Z0.8500.h5",                                                   
+          "stable_Z0.7500.h5",                                                   
+          "stable_Z0.6500.h5",                                                   
+          "stable_Z0.5500.h5",                                                   
+          "stable_Z0.4500.h5",                                                   
+          "stable_Z0.5500.h5",                                                   
+          "stable_Z0.3500.h5",                                                   
+          "stable_Z0.2500.h5",                                                   
          #    "2unstable_Z0.4500.h5"
           ]                                  
 
@@ -86,8 +86,11 @@ files = [
     "stable_Z0.9000.h5", 
     "stable_Z0.9500.h5",
     "stable_Z1.0000.h5",
+    "stable_ad.h5",
+    "unstable_ad.h5"
 ]
-files = ["test_stable_Z0.9500.h5", "test_stable_Z0.9900.h5", ]
+#files = ["stable_Z1.0000.h5", "stable_Z0.9000.h5", "stable_Z0.9500.h5", "stable_Z0.8500.h5", "test_stable_Z0.9900.h5", ]
+#files = ["stable_Z0.3000.h5"]
 path = "./Data/"
 file_list = [path + file for file in files]
 
@@ -114,7 +117,9 @@ fig2, ax2 = plt.subplots(5, 1)
 fig2.suptitle(f"H2/O2")                                                          
 fig3, ax3 = plt.subplots(1, 1)                                                  
 fig3.suptitle(f"H2/O2")                                                          
-                                                                                
+
+fig4, ax4 = plt.subplots(1, 1)
+
 idx_H2 = f.gas.species_index("H2")                                              
 idx_O2 = f.gas.species_index("O2")                                              
 idx_H2O = f.gas.species_index("H2O")                                              
@@ -123,38 +128,49 @@ idx_O = f.gas.species_index("O")
 print(f.gas.species_index("OH"))
 print(f.gas.species_index("H"))
 
+z_spec = 0.8
 
 for file in file_list:
     h5_file = h5py.File(file, "r")                                          
     f = ct.CounterflowDiffusionFlame(gas, grid=grid)                                
     # Get keys to acces h5 groups depending on how they were saved
     if list(h5_file.keys())[0] == "extinction":                                 
-        names = ["extinction/" + str(name) for name in h5_file["extinction"].keys()]
+        names = ["extinction/" + str(name) for name in h5_file["extinction"].keys()][::]
     else:                                                                       
-        names = [str(name) for name in h5_file.keys()]        
+        names = [str(name) for name in h5_file.keys()][::]
     
-
     species = []
     amax = []
     tmax = []
-
+    c_spec = []
+    h_spec = []
+    T_spec = []
 
     for  name in names:                                                              
         f.restore(file, name=name)                                             
         rms_b = ut.rms(f.T)
-        #try:
-        #    if file == "test_stable_Z0.9900.h5":
-        #        ut.correct_enthalpy_flame(f, "H2O", style="line")
-        #    else:
-        #        ut.correct_enthalpy_flame(f, "H2O")
-        #except:
-        #    continue
+        try:
+            if file == "test_stable_Z0.9900.h5":
+                ut.correct_enthalpy_flame(f, "H2O", style="line")
+            else:
+                ut.correct_enthalpy_flame(f, "H2O")
+        except:
+            continue
 
-        #ut.correct_enthalpy_flame(f, "H2O")
+        #ut.correct_enthalpy_flame(f, "H2O", style="vshape")
         rms_a = ut.rms(f.T)
         print(f"Diff rms {np.abs(rms_a-rms_b)}")
         print(f.h[0], f.h[-1])
-        if np.max(f.T) > 350:
+        
+        idx_z_spec = np.argmin(np.abs(f.mixture_fraction("H") - z_spec))
+
+        h_spec.append(f.h[idx_z_spec])
+        T_spec.append(f.T[idx_z_spec])
+        c_spec.append(f.Y[idx_H2O, idx_z_spec])
+
+        if (np.max(f.T) < 400):
+            ut.print_r(np.max(f.T))
+        if np.max(f.T) > 300:
             amax.append(f.strain_rate("max"))
             #z_stoich = 0.115
             #amax.append(ut.chi_stoich(f, z_stoich))
@@ -178,6 +194,7 @@ for file in file_list:
     tmax = np.array(tmax)[idx]
 
     ax3.scatter(amax, tmax, marker="x", label=str(file))
+    ax4.scatter(h_spec, c_spec)
 for a in ax:                                                                    
     a.grid()                                                                    
     a.legend()                                                                  

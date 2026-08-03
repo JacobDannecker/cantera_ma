@@ -43,8 +43,8 @@ save_path = "Data/"
 
 files = [
        #  "stable_Z0.4500.h5", 
-        "stable_Z0.3500.h5",
-         "stable_Z0.2500.h5",  
+        "stable_Z0.5000.h5",
+         #"stable_Z0.2500.h5",  
          ]
 start_files = [start_path + file for file in files]    
 for start_file in start_files:
@@ -53,7 +53,7 @@ for start_file in start_files:
     
     Z_wall_val = h5_file[keys[0]]["flame/z"].attrs["z_wall"]
     file_tag = f"Z{Z_wall_val:.4f}"                                             
-    save_file = save_path + f"2unstable_{file_tag}.h5"
+    save_file = save_path + f"3unstable_{file_tag}.h5"
 
 
     # stable.py's np.isclose extinction check has a tight tolerance, so the last
