@@ -43,7 +43,7 @@ save_path = "Data/"
 
 files = [
        #  "stable_Z0.4500.h5", 
-        "stable_Z0.5000.h5",
+        "stable_Z0.2500.h5",
          #"stable_Z0.2500.h5",  
          ]
 start_files = [start_path + file for file in files]    

@@ -96,3 +96,14 @@ Scripts/2zmanifold.py
 Scripts/correct.py
 Scripts/plot_unstable_ad.py
 .gitignore
+Scripts/Z0.4_normalization/*
+Scripts/2DplotSpecies.py
+Scripts/2DplotT4x.py
+Scripts/correct_polot.py
+Scripts/polt_all_z.py
+Scripts/*.png
+Scripts/*.*.png
+Scripts/plotman.py
+Scripts/stable_and_unstable_plot.py
+csv/*
+Scripts/runtime_table.py

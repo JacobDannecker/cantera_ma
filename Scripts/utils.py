@@ -426,7 +426,6 @@ def correct_enthalpy_flame(f, C, style="vshape"):
     max_dh = np.max(np.abs(h_orig - h_v))                                        
     max_dT = np.max(np.abs(T_orig - T_v))                                        
     f.flame.set_values("T", T_v)                                              
-    print(f"Max dh: {max_dh},Max dt: {max_dT}")                                  
                                                 
 
 def rms(data):
