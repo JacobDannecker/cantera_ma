@@ -107,3 +107,6 @@ Scripts/plotman.py
 Scripts/stable_and_unstable_plot.py
 csv/*
 Scripts/runtime_table.py
+Scripts/comparrison_z.py
+Scripts/grid_1d.py
+Scripts/normtest.py
