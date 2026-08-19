@@ -95,7 +95,6 @@ def get_z_stoich(gas, wall_params, reaction_yaml):
     z_st = gas.mixture_fraction(fuel, oxidizer, element=mix_frac)
     return z_st
 
-
 class SolveFailure(Exception):
     """Carries a failure_type classifying why solve_with_wall failed."""
     def __init__(self, failure_type, message):
@@ -119,7 +118,6 @@ def classify_failure(msg):
 
 #: Cold-start factor seed used when no factor_last_working is supplied.
 DEFAULT_FACTOR_SEED = 1e6
-
 _MAX_LOG_STEP = np.log(10.0)   # cap a single secant step to 10x in factor
 _MIN_LOG_STEP = np.log(1.05)   # minimum forward progress per secant step
 
@@ -230,7 +228,6 @@ def solve_with_wall(f, wall_params, delta_T_max=1., factor_last_working=False,
             if wall_params["factor"] >= max_factor:
                 raise SolveFailure("max factor", "Max factor reached.") from err
 
-
 def runtime(func):
     def wrapper():
         start = time.time()
@@ -240,8 +237,6 @@ def runtime(func):
         print(f"Runtime: {total}")
         return val
     return wrapper
-
-
 
 def print_r(a):
     print(Fore.RED + str(a) + Style.RESET_ALL)
@@ -257,7 +252,6 @@ def print_y(a):
 
 def print_m(a):
     print(Fore.MAGENTA + str(a) + Style.RESET_ALL)
-
 
 def load_data(file_path, name, C):                                              
     reaction_mechanism = "h2o2.yaml"                                            
@@ -275,8 +269,12 @@ def load_data(file_path, name, C):
     f.transport_model = "unity-Lewis-number"                                    
     f.restore(file_path, name)                                                  
     return f.grid, f.T, f.Y, f.strain_rate("max"), f.gas.species_index(C), reaction_mechanism
-                                                                                
-                                                                                
+                          
+def get_species_index(species):
+    reaction_mechanism = "h2o2.yaml"                                            
+    gas = ct.Solution(reaction_mechanism)                                       
+    return gas.species_index(species)
+
 def compute_enthalpy_and_Z(gas, T, Y, fuel_idx=0, oxidizer_idx=3):              
     n = len(T)                                                                  
     h = np.empty(n)                                                             
@@ -303,42 +301,6 @@ def compute_cold_enthalpy_and_Z(gas, Y, T_cold=300.0, fuel_idx=0, oxidizer_idx=3
         Z[j] = gas.mixture_fraction(fuel, oxidizer, basis="mass")
     return h, Z
 
-#def perfect_v_shape(Z, h, zero_ends=False):                                     
-#    i_tip = np.argmin(h)                                                        
-#    if zero_ends:                                                               
-#        left_z = np.array([Z[0], Z[i_tip]])                                     
-#        left_h = np.array([0.0, h[i_tip]])                                      
-#        right_z = np.array([Z[i_tip], Z[-1]])                                   
-#        right_h = np.array([h[i_tip], 0.0])                                     
-#    else:                                                                       
-#        left_z = Z[: i_tip + 1]                                                 
-#        left_h = h[: i_tip + 1]                                                 
-#        right_z = Z[i_tip:]                                                     
-#        right_h = h[i_tip:]                                                     
-#    left = np.polyfit(left_z, left_h, 1)                                        
-#    right = np.polyfit(right_z, right_h, 1)                                     
-#    h_v = np.where(np.arange(len(Z)) <= i_tip, np.polyval(left, Z),             
-#                   np.polyval(right, Z))                                        
-#    return h_v, i_tip                                                          
-
-#def perfect_v_shape(Z, h, zero_ends=False):
-#    i_tip = np.argmin(h)
-#    
-#    if zero_ends:
-#        h_left, h_right = 0.0, 0.0
-#    else:
-#        h_left, h_right = h[0], h[-1]
-#    
-#    h_v = np.where(
-#        np.arange(len(Z)) <= i_tip,
-#        np.interp(Z, [Z[0], Z[i_tip]], [h_left, h[i_tip]]),
-#        np.interp(Z, [Z[i_tip], Z[-1]], [h[i_tip], h_right])
-#    )
-#    print(h_v.shape)
-#    plt.plot(Z, h_v)
-#    plt.show()
-#    return h_v, i_tip
-
 def perfect_v_shape(Z, h, zero_ends=False):
     i_tip = np.argmin(h)
     z_min = Z[i_tip]
@@ -359,17 +321,7 @@ def perfect_v_shape(Z, h, zero_ends=False):
         h[i_tip] + right_slope * (Z - Z[i_tip])
     )
     return h_v, i_tip
-
-#def perfect_line(Z, h, zero_ends=False):                                        
-#    if zero_ends:                                                               
-#        z_line = np.array([Z[0], Z[-1]])                                        
-#        h_line = np.array([0.0, 0.0])                                           
-#    else:                                                                       
-#        z_line = Z                                                               
-#        h_line = h                                                               
-#    coeffs = np.polyfit(z_line, h_line, 1)                                       
-#    h_line = np.polyval(coeffs, Z)                                               
-#    return h_line                                                               
+                                                          
 def perfect_line(Z, h, zero_ends=False):
     if zero_ends:
         z_line = np.array([Z[0], Z[-1]])
@@ -408,7 +360,6 @@ def correct_enthalpy(file_path, name, C, style="vshape", active=True, zero_ends=
    max_dT = np.max(np.abs(T_orig - T_v))                                        
    print(f"Max dh: {max_dh},Max dt: {max_dT}")                                  
    return T_v, Y, h_v, Z, a_max, idx_C, max_dh, max_dT                                          
-#   return T_orig, Y, h_orig, Z, a_max, idx_C, max_dh, max_dT                                          
 
 def correct_enthalpy_flame(f, C, style="vshape"):                                                
     grid = f.grid
@@ -427,6 +378,5 @@ def correct_enthalpy_flame(f, C, style="vshape"):
     max_dT = np.max(np.abs(T_orig - T_v))                                        
     f.flame.set_values("T", T_v)                                              
                                                 
-
 def rms(data):
     return np.sqrt(np.mean(data ** 2))
