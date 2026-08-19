@@ -52,24 +52,25 @@ files = [
 file_list = [path + file for file in files]
 
 
-z_spec = 0.4
-
+z_spec = 0.5
+quantity = "T" # "H20", "H", ...
+cmax_thr = 0.562
 
 gas = ct.Solution("h2o2.yaml")
-T_all = []
+quantity_all = []
 h_all = []
 C_all = []
 
 bound_h_max_h = []
-bound_h_max_T = []
+bound_h_max_quantity = []
 bound_h_max_C = []
 
 bound_h_min_h = []
-bound_h_min_T = []
+bound_h_min_quantity = []
 bound_h_min_C = []
 
 bound_C_max_h = []
-bound_C_max_T = []
+bound_C_max_quantity = []
 bound_C_max_C = []
 
 
@@ -96,17 +97,14 @@ for file in file_list:
         names = [str(name) for name in h5_file.keys()][::] 
 
 
-    T_file = []
+    quantity_file = []
     h_file = []
     C_file = []
 
-    h_prev = 1000000
-    c_prev = 0.0
-    tmax_prev = 10000
 
     cmax_file_C = []
     cmax_file_h = []
-    cmax_file_T = []
+    cmax_file_quantity = []
 
     for name in names:
         print(file, name) 
@@ -116,8 +114,6 @@ for file in file_list:
         else:
             val_tuple = ut.correct_enthalpy(file, name, "H2O", style="vshape", active=True)
             z_wall = h5_file[names[0]]["flame/z"].attrs["z_wall"]
-        if (np.max(val_tuple[0]) < 400):
-            ut.print_r("smaller")
 
         T, Y, h, z, a_m, idx_C, max_dh, max_dT = val_tuple
 
@@ -126,68 +122,56 @@ for file in file_list:
         if not (file == "Data/stable_ad.h5" or  file == "Data/unstable_ad.h5"): 
             idx_wall = np.argmin(np.abs(z - z_wall))
 
-        h_now = np.min(h)
-        c_now = np.max(Y[idx_C])
-        tmax_now = np.max(T)
-        if True: #h_now > h_prev:
-            # Check if actual z_wall of the flamelet is close to z_wall of file
-            # and if enthalpy is decreasing
-
-            T_file.append(T[idx_z_spec]) 
-            h_file.append(h[idx_z_spec])
-            C_file.append(Y[idx_C, idx_z_spec])
+        if quantity == "T":
+            quantity_array = T
+            print(f"Collecting T")
         else:
-            print("not used")
-        h_prev = h_now
-        c_prev = c_now
-        tmax_prev = tmax_now
+            idx_species = ut.get_species_index(quantity)
+            print(f"Collecting {quantity} at index: {idx_species}")
+            quantity_array = Y[idx_species]
+        
+        quantity_file.append(quantity_array[idx_z_spec]) 
+        print(quantity_array[idx_z_spec])
+        h_file.append(h[idx_z_spec])
+        C_file.append(Y[idx_C, idx_z_spec])
 
-
-        # Collect borders
-       # if T[idx_z_spec] < 301:
-
-       #     # Extinct
-       #     bound_h_min_h.append(h[idx_z_spec])
-       #     bound_h_min_T.append(T[idx_z_spec])
-       #     bound_h_min_C.append(Y[idx_C, idx_z_spec])
 
         if file == "Data/stable_Z0.1600.h5":
             bound_h_min_h.append(h[idx_z_spec])
-            bound_h_min_T.append(T[idx_z_spec])
+            bound_h_min_quantity.append(quantity_array[idx_z_spec])
             bound_h_min_C.append(Y[idx_C, idx_z_spec])
 
 
         if "ad" in file and h[idx_z_spec] > 0 and (not "unstable" in file):
             #Adiabatic
             bound_h_max_h.append(h[idx_z_spec])
-            bound_h_max_T.append(T[idx_z_spec])
+            bound_h_max_quantity.append(quantity_array[idx_z_spec])
             bound_h_max_C.append(Y[idx_C, idx_z_spec])
 
         if not "unstable" in file:
             # Cmax 
             cmax_file_C.append(Y[idx_C, idx_z_spec])
             cmax_file_h.append(h[idx_z_spec])
-            cmax_file_T.append(T[idx_z_spec])
+            cmax_file_quantity.append(quantity_array[idx_z_spec])
                 
-    print(cmax_file_C)
     if not (not cmax_file_C):
         idxcmax = np.argmin(cmax_file_h)
-        print(cmax_file_C[idxcmax])
-        if cmax_file_C[idxcmax] > 0.67:
+        if cmax_file_C[idxcmax] > cmax_thr:
             bound_C_max_h.append(cmax_file_h[idxcmax])
-            bound_C_max_T.append(cmax_file_T[idxcmax])
+            bound_C_max_quantity.append(cmax_file_quantity[idxcmax])
             bound_C_max_C.append(cmax_file_C[idxcmax])
 
 
-    T_all.append(T_file)
+    quantity_all.append(quantity_file)
+    print(quantity_file)
     h_all.append(h_file)
     C_all.append(C_file)
 
-
-np.savetxt(f"Z{z_spec}_Ideal.csv", np.column_stack((np.concat(T_all), np.concat(h_all), np.concat(C_all))), delimiter=",", header="T,h,C")
-np.savetxt(f"Z{z_spec}_hmax.csv", np.column_stack((bound_h_max_T, bound_h_max_h, bound_h_max_C)), delimiter=",", header="T,h,C")
-np.savetxt(f"Z{z_spec}_hmin.csv", np.column_stack((bound_h_min_T, bound_h_min_h, bound_h_min_C)), delimiter=",", header="T,h,C")
-np.savetxt(f"Z{z_spec}_Cmax.csv", np.column_stack((bound_C_max_T, bound_C_max_h, bound_C_max_C)), delimiter=",", header="T,h,C")
+header = quantity + ",h,C"
+np.savetxt(f"{quantity}_Z{z_spec}_Ideal.csv", np.column_stack((np.concat(quantity_all), np.concat(h_all), np.concat(C_all))), delimiter=",", header=header)
+np.savetxt(f"{quantity}_Z{z_spec}_hmax.csv", np.column_stack((bound_h_max_quantity, bound_h_max_h, bound_h_max_C)), delimiter=",", header=header)
+np.savetxt(f"{quantity}_Z{z_spec}_hmin.csv", np.column_stack((bound_h_min_quantity, bound_h_min_h, bound_h_min_C)), delimiter=",", header=header)
+np.savetxt(f"{quantity}_Z{z_spec}_Cmax.csv", np.column_stack((bound_C_max_quantity, bound_C_max_h, bound_C_max_C)), delimiter=",", header=header)
 
 
 
