@@ -96,7 +96,7 @@ for start_file in start_files:
     f.transport_model = "unity-Lewis-number"
 
 
-    ##############################################################################
+    #########################################################################
     # Flame Continuation
     trapezoid = getattr(np, "trapezoid", None) or np.trapz
     # Maximum number of steps to take

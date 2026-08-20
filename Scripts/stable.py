@@ -194,8 +194,6 @@ for Z_wall_val in Z_wall_values:
                   f'Restoring alpha = {last_good_alpha:8.4f} and '
                   f'trying delta_alpha = {delta_alpha}')
             print(f"Setting initial guess {names[-1]}")
-            # names[n_last_burning] is the actual saved group for that step
-            # (names[0] == "initial", not "extinction/0000").
             name = names[n_last_burning]
             print(f"Before f:{f.fuel_inlet.mdot} o:{f.oxidizer_inlet.mdot}")
             f.restore(file_path, name)
